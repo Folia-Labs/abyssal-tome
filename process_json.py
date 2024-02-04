@@ -67,7 +67,9 @@ def process_ruling(ruling, item_code):
         logging.warning(f"Ruling is empty: {ruling} for card {item_code}")
 
     ruling = NB_PATTERN.sub("", ruling)
-    # ruling = ruling.encode('unicode_escape').decode('utf-8')
+
+    # Remove escaped double quotes
+    ruling = ruling.replace('\\"', '"')
 
     ruling = ruling.replace(r"\*", r"\\*").replace(r"\_", r"\\_")
 
