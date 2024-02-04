@@ -158,7 +158,7 @@ def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[d
     page.update()
 
 
-def search_input_changed(event, data: dict[str: list[dict]], content):
+def search_input_changed(event: ft.ControlEvent, data: dict[str: list[dict]], content):
     search_term = event.control.value
     create_search_view(event.control.page, content, data, search_term)
 
@@ -172,7 +172,9 @@ def main(page: ft.Page) -> None:
     search_input = ft.TextField(
         hint_text="Type to search...",
         on_change=lambda event: search_input_changed(event, json_data, content),
-        autofocus=True
+        autofocus=True,
+        autocorrect=False,
+        icon="search",
     )
     page.add(search_input)
 
