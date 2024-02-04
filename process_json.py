@@ -1,4 +1,5 @@
 import regex as re
+import datetime
 import codecs
 import logging
 import json
@@ -85,6 +86,14 @@ def process_ruling(ruling, item_code, updated_at=None):
     ruling = BOLD_TAGS_PATTERN.sub("**", ruling)  # Replace HTML bold tags with Markdown
     ruling = ITALIC_TAGS_PATTERN.sub("*", ruling)  # Replace HTML italic tags with Markdown
     ruling = NEWLINE_PATTERN.sub("", ruling)  # Strip newline characters
+
+    # Format updated_at to "DD <month_name> YYYY"
+    if updated_at:
+        try:
+            updated_at_date = datetime.datetime.strptime(updated_at, "%Y-%m-%dT%H:%M:%S.%fZ")
+            updated_at = updated_at_date.strftime("%d %B %Y")
+        except ValueError:
+            logging.warning(f"Could not parse updated_at: {updated_at}")
 
     if not ruling:
         return None
