@@ -125,6 +125,8 @@ def process_json_file(file_path, card_names):
     for item in data:
         try:
             text = item["text"]
+            # Split the text by "- " that appears after a period or at the beginning of the text
+            rulings = re.split(r"(?<=\.\s+|\A) - (?!\bFAQ\b)", text)
             # Split the text by "- " to get a list of rulings, ensuring it's not in the middle of a sentence
             rulings = re.split(r"(?<!\w) - (?!\bFAQ\b)", text)[1:]
             rulings = re.split(r"- (?!\bFAQ\b)", text)[1:]  # Split the text by "- " not followed by "FAQ"  # Split the text by "- " to get a list of rulings
