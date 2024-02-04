@@ -9,7 +9,7 @@ def load_json_data() -> dict:
     return data
 
 
-def mark_subheader(text: str) -> str:
+def mark_subheader(card_name: str, card_code: str) -> str:
     return f"## {text}"
 
 
@@ -17,17 +17,23 @@ def highlight(text: str, term: str) -> str:
     return re.sub(fr'({term})', r'**\1**', text, flags=re.IGNORECASE)
 
 
-def create_search_view(page: ft.Page, content: ft.Column, data: dict, search_term: str) -> None:
+def create_search_view(page: ft.Page, content: ft.Column, data: list, search_term: str) -> None:
     highlighted_controls = []
 
-    for card_name, rulings in data.items():
-        card_name_added = False
-        for ruling in rulings:
-            if search_term.lower() in ruling.lower():
-                if not card_name_added:
-                    highlighted_controls.append(ft.Markdown(value=mark_subheader(card_name)))
-                    card_name_added = True
-                highlighted_controls.append(ft.Markdown(value=highlight(ruling, search_term)))
+    for ruling in data:
+        card_name = ruling.get('card_name', 'Unknown Card')
+        card_code = ruling.get('card_code', 'Unknown Code')
+        ruling_text = ruling.get('content', {}).get('text', '')
+        question = ruling.get('content', {}).get('question', '')
+        answer = ruling.get('content', {}).get('answer', '')
+        if search_term.lower() in ruling_text.lower() or search_term.lower() in question.lower() or search_term.lower() in answer.lower():
+            highlighted_controls.append(ft.Markdown(value=mark_subheader(card_name, card_code)))
+            if question:
+                highlighted_controls.append(ft.Markdown(value=highlight(f"**Q:** {question}", search_term)))
+            if answer:
+                highlighted_controls.append(ft.Markdown(value=highlight(f"**A:** {answer}", search_term)))
+            if ruling_text:
+                highlighted_controls.append(ft.Markdown(value=highlight(ruling_text, search_term)))
 
     if not highlighted_controls:
         highlighted_controls.append(ft.Text(value="No results found."))
