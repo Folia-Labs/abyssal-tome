@@ -35,20 +35,21 @@ def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[d
             if search_term.lower() in ruling_text.lower() or search_term.lower() in question.lower() or search_term.lower() in answer.lower():
                 if not name_added:
                     highlighted_controls.append(ft.Markdown(value=mark_subheader(card_name), selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_FLAVORED))
+                    highlighted_controls.append(ft.Markdown(value=mark_subheader(card_name), selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_FLAVORED))
 
                 if ruling_type == EntryType.ERRATUM:
-                    highlighted_controls.append(ft.Markdown(value=highlight(f"**Erratum:** {ruling_text}" ,search_term), selectable=True))
+                    highlighted_controls.append(ft.Markdown(value=highlight(f"**Erratum:** {ruling_text}" ,search_term), selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_FLAVORED))
                 elif ruling_type == EntryType.CLARIFICATION:
-                    highlighted_controls.append(ft.Markdown(value=highlight(f"**Clarification:** {ruling_text}" ,search_term), selectable=True))
+                    highlighted_controls.append(ft.Markdown(value=highlight(f"**Clarification:** {ruling_text}" ,search_term), selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_FLAVORED))
                 elif ruling_type == EntryType.QUESTION_ANSWER:
                     highlighted_controls.extend(
                         (
-                            ft.Markdown(selectable=True,
+                            ft.Markdown(selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_FLAVORED,
                                 value=highlight(
                                     f"**Question:** {question}", search_term
                                 )
                             ),
-                            ft.Markdown(selectable=True,
+                            ft.Markdown(selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_FLAVORED,
                                 value=highlight(
                                     f"**Answer:** {answer}", search_term
                                 )
@@ -56,7 +57,7 @@ def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[d
                         )
                     )
     if not highlighted_controls:
-        highlighted_controls.append(ft.Markdown(value="No results found.", selectable=True))
+        highlighted_controls.append(ft.Markdown(value="No results found.", selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_FLAVORED))
 
     content.controls = highlighted_controls
     page.update()
