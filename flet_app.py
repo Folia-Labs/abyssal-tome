@@ -1,4 +1,5 @@
 import flet as ft
+import asyncio
 import json
 import re
 from pathlib import Path
@@ -32,6 +33,22 @@ TAG_TO_IMAGE = {
 
 # Function to highlight the search term in text
 # It finds the search term in the text and then creates three ft.TextSpan objects:
+
+def debounce(wait):
+    def decorator(fn):
+        @functools.wraps(fn)
+        async def debounced(*args, **kwargs):
+            debounced._task = getattr(debounced, '_task', None)
+            if debounced._task is not None:
+                debounced._task.cancel()
+            debounced._task = asyncio.ensure_future(fn(*args, **kwargs))
+            try:
+                await asyncio.sleep(wait)
+                await debounced._task
+            except asyncio.CancelledError:
+                pass
+        return debounced
+    return decorator
 
 def load_json_data() -> dict:
     with open('processed_data.json', 'r', encoding='utf-8') as file:
@@ -159,8 +176,12 @@ def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[d
 
 
 def search_input_changed(event: ft.ControlEvent, data: dict[str: list[dict]], content):
-    search_term = event.control.value
-    create_search_view(event.control.page, content, data, search_term)
+    @debounce(0.3)
+    async def debounced_search(event: ft.ControlEvent, data: dict[str: list[dict]], content):
+        search_term = event.control.value
+        create_search_view(event.control.page, content, data, search_term)
+
+    asyncio.run(debounced_search(event, data, content))
 
 
 def main(page: ft.Page) -> None:
