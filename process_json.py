@@ -79,8 +79,8 @@ def process_ruling(ruling, item_code):
     # Remove escaped double quotes
     ruling = ESCAPED_DOUBLE_QUOTES_PATTERN.sub('"', ruling)
 
-    ruling = ESCAPED_ASTERISK_PATTERN.sub(r"\\*", ruling)
-    ruling = ESCAPED_UNDERSCORE_PATTERN.sub(r"\\_", ruling)
+    ruling = ESCAPED_ASTERISK_PATTERN.sub(r"*", ruling)
+    ruling = ESCAPED_UNDERSCORE_PATTERN.sub(r"_", ruling)
 
     ruling = BOLD_TAGS_PATTERN.sub("**", ruling)  # Replace HTML bold tags with Markdown
     ruling = ITALIC_TAGS_PATTERN.sub("*", ruling)  # Replace HTML italic tags with Markdown
@@ -94,6 +94,12 @@ def process_ruling(ruling, item_code):
         return None
 
     # Remove '**UPDATE:** ' from the ruling text
+    ruling = ruling.replace('\\*\\*Erratum\\*\\*', '**Erratum**')  # Ensure Erratum is properly formatted
+    ruling = ruling.replace('\\*\\*Q:\\*\\*', '**Q:**')  # Ensure Q: is properly formatted
+    ruling = ruling.replace('\\*\\*A:\\*\\*', '**A:**')  # Ensure A: is properly formatted
+
+    ruling = ruling.replace('**UPDATE:** ', '')
+
     ruling = ruling.replace('**UPDATE:** ', '')
 
     entry_type = categorize_entry(ruling)
