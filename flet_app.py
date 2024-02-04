@@ -34,21 +34,21 @@ def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[d
 
             if search_term.lower() in ruling_text.lower() or search_term.lower() in question.lower() or search_term.lower() in answer.lower():
                 if not name_added:
-                    highlighted_controls.append(ft.Markdown(value=mark_subheader(card_name)))
+                    highlighted_controls.append(ft.Markdown(value=mark_subheader(card_name), selectable=True))
 
                 if ruling_type == EntryType.ERRATUM:
-                    highlighted_controls.append(ft.Markdown(value=highlight(f"**Erratum:** {ruling_text}" ,search_term)))
+                    highlighted_controls.append(ft.Markdown(value=highlight(f"**Erratum:** {ruling_text}" ,search_term), selectable=True))
                 elif ruling_type == EntryType.CLARIFICATION:
-                    highlighted_controls.append(ft.Markdown(value=highlight(f"**Clarification:** {ruling_text}" ,search_term)))
+                    highlighted_controls.append(ft.Markdown(value=highlight(f"**Clarification:** {ruling_text}" ,search_term), selectable=True))
                 elif ruling_type == EntryType.QUESTION_ANSWER:
                     highlighted_controls.extend(
                         (
-                            ft.Markdown(
+                            ft.Markdown(selectable=True,
                                 value=highlight(
                                     f"**Question:** {question}", search_term
                                 )
                             ),
-                            ft.Markdown(
+                            ft.Markdown(selectable=True,
                                 value=highlight(
                                     f"**Answer:** {answer}", search_term
                                 )
@@ -56,7 +56,7 @@ def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[d
                         )
                     )
     if not highlighted_controls:
-        highlighted_controls.append(ft.Text(value="No results found."))
+        highlighted_controls.append(ft.Markdown(value="No results found.", selectable=True))
 
     content.controls = highlighted_controls
     page.update()
