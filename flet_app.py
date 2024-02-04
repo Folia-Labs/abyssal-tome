@@ -14,18 +14,34 @@ def load_json_data() -> dict:
 def mark_subheader(card_name: str) -> str:
     return f"## {card_name}"
 
-
-def highlight(text: str, term: str) -> str:
-    return re.sub(fr'({term})', r'==\1==', text, flags=re.IGNORECASE)
-
+# Function to highlight the search term in text
+# It finds the search term in the text and then creates three ft.TextSpan objects:
+# 1. The text before the search term
+# 2. The search term itself
+# 3. The text after the search term
+# The search term is highlighted by setting its color to yellow
+def highlight(text: str, term: str) -> list[ft.TextSpan]:
+    highlighted_controls = []
+    if term.lower() in text.lower():
+        start = text.lower().find(term.lower())
+        end = start + len(term)
+        highlighted_controls.extend(
+            (
+                ft.TextSpan(text=text[:start]),
+                ft.TextSpan(
+                    text=text[start:end], style=ft.TextStyle(weight=ft.FontWeight.BOLD, bgcolor=ft.colors.BLUE_50)
+                ),
+                ft.TextSpan(text=text[end:]),
+            )
+        )
+    return highlighted_controls
 
 def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[dict]], search_term: str) -> None:
-    highlighted_controls = []
+    text = []
+    text_spans = []
 
     name_added = False
     for card_name, card_rulings in data.items():
-        # card_name = ruling.get('card_name', 'Unknown Card')
-        # card_code = ruling.get('card_code', 'Unknown Code')
         for ruling in card_rulings:
             ruling_text = ruling.get('content', {}).get('text', '')
             question = ruling.get('content', {}).get('question', '')
@@ -34,32 +50,60 @@ def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[d
 
             if search_term.lower() in ruling_text.lower() or search_term.lower() in question.lower() or search_term.lower() in answer.lower():
                 if not name_added:
-                    highlighted_controls.append(ft.Markdown(value=mark_subheader(card_name), selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_FLAVORED))
-                    highlighted_controls.append(ft.Markdown(value=mark_subheader(card_name), selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_FLAVORED))
-
-                if ruling_type == EntryType.ERRATUM:
-                    highlighted_controls.append(ft.Markdown(value=highlight(f"**Erratum:** {ruling_text}" ,search_term), selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_FLAVORED))
-                elif ruling_type == EntryType.CLARIFICATION:
-                    highlighted_controls.append(ft.Markdown(value=highlight(f"**Clarification:** {ruling_text}" ,search_term), selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_FLAVORED))
-                elif ruling_type == EntryType.QUESTION_ANSWER:
-                    highlighted_controls.extend(
-                        (
-                            ft.Markdown(selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_FLAVORED,
-                                value=highlight(
-                                    f"**Question:** {question}", search_term
-                                )
-                            ),
-                            ft.Markdown(selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_FLAVORED,
-                                value=highlight(
-                                    f"**Answer:** {answer}", search_term
-                                )
-                            ),
+                    text.append(
+                        ft.Text(
+                            value=card_name,
+                            disabled=False,
+                            selectable=True,
+                            theme_style=ft.TextThemeStyle.HEADLINE_SMALL,
                         )
                     )
-    if not highlighted_controls:
-        highlighted_controls.append(ft.Markdown(value="No results found.", selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_FLAVORED))
 
-    content.controls = highlighted_controls
+                if ruling_type == EntryType.ERRATUM:
+                    text_spans = [
+                        ft.TextSpan(
+                            text="Erratum: ",
+                            style=ft.TextStyle(weight=ft.FontWeight.BOLD),
+                        )
+                    ]
+                    text_spans.extend(highlight(ruling_text, search_term))
+                    text.append(ft.Text(disabled=False, selectable=True, spans=text_spans) )
+                elif ruling_type == EntryType.CLARIFICATION:
+                    text_spans = [
+                        ft.TextSpan(
+                            text="Clarification: ",
+                            style=ft.TextStyle(weight=ft.FontWeight.BOLD),
+                        )
+                    ]
+                    text_spans.extend(highlight(ruling_text, search_term))
+                    text.append(ft.Text(disabled=False, selectable=True, spans=text_spans))
+
+                elif ruling_type == EntryType.QUESTION_ANSWER:
+                    text_spans = [
+                        ft.TextSpan(
+                            text="Question: ",
+                            style=ft.TextStyle(weight=ft.FontWeight.BOLD),
+                        )
+                    ]
+                    text_spans.extend(
+                        highlight(question, search_term)
+                    )
+                    text_spans.append(ft.TextSpan(text="\n"))
+                    text_spans.append(
+                        ft.TextSpan(
+                            text="Answer: ",
+                            style=ft.TextStyle(weight=ft.FontWeight.BOLD)
+                        )
+                    )
+                    text_spans.extend(
+                        highlight(answer, search_term)
+                    )
+                    text.append(ft.Text(disabled=False, selectable=True, spans=text_spans))
+
+    if not text:
+        text.append(ft.Text("No results found."))
+
+    content.controls = text
     page.update()
 
 
@@ -83,4 +127,4 @@ def main(page: ft.Page) -> None:
 
 
 if __name__ == "__main__":
-    ft.app(target=main)
+    ft.app(target=main, assets_dir="icons")
