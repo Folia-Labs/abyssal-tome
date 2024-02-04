@@ -2,6 +2,8 @@ import flet as ft
 import json
 import re
 
+from process_json import EntryType
+
 
 def load_json_data() -> dict:
     with open('processed_data.json', 'r', encoding='utf-8') as file:
@@ -9,32 +11,50 @@ def load_json_data() -> dict:
     return data
 
 
-def mark_subheader(card_name: str, card_code: str) -> str:
-    return f"## {text}"
+def mark_subheader(card_name: str) -> str:
+    return f"## {card_name}"
 
 
 def highlight(text: str, term: str) -> str:
-    return re.sub(fr'({term})', r'**\1**', text, flags=re.IGNORECASE)
+    return re.sub(fr'({term})', r'==\1==', text, flags=re.IGNORECASE)
 
 
-def create_search_view(page: ft.Page, content: ft.Column, data: list, search_term: str) -> None:
+def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[dict]], search_term: str) -> None:
     highlighted_controls = []
 
-    for ruling in data:
-        card_name = ruling.get('card_name', 'Unknown Card')
-        card_code = ruling.get('card_code', 'Unknown Code')
-        ruling_text = ruling.get('content', {}).get('text', '')
-        question = ruling.get('content', {}).get('question', '')
-        answer = ruling.get('content', {}).get('answer', '')
-        if search_term.lower() in ruling_text.lower() or search_term.lower() in question.lower() or search_term.lower() in answer.lower():
-            highlighted_controls.append(ft.Markdown(value=mark_subheader(card_name, card_code)))
-            if question:
-                highlighted_controls.append(ft.Markdown(value=highlight(f"**Q:** {question}", search_term)))
-            if answer:
-                highlighted_controls.append(ft.Markdown(value=highlight(f"**A:** {answer}", search_term)))
-            if ruling_text:
-                highlighted_controls.append(ft.Markdown(value=highlight(ruling_text, search_term)))
+    name_added = False
+    for card_name, card_rulings in data.items():
+        # card_name = ruling.get('card_name', 'Unknown Card')
+        # card_code = ruling.get('card_code', 'Unknown Code')
+        for ruling in card_rulings:
+            ruling_text = ruling.get('content', {}).get('text', '')
+            question = ruling.get('content', {}).get('question', '')
+            answer = ruling.get('content', {}).get('answer', '')
+            ruling_type = ruling.get('type', 'Unknown Type')
 
+            if search_term.lower() in ruling_text.lower() or search_term.lower() in question.lower() or search_term.lower() in answer.lower():
+                if not name_added:
+                    highlighted_controls.append(ft.Markdown(value=mark_subheader(card_name)))
+
+                if ruling_type == EntryType.ERRATUM:
+                    highlighted_controls.append(ft.Markdown(value=highlight(f"**Erratum:** {ruling_text}" ,search_term)))
+                elif ruling_type == EntryType.CLARIFICATION:
+                    highlighted_controls.append(ft.Markdown(value=highlight(f"**Clarification:** {ruling_text}" ,search_term)))
+                elif ruling_type == EntryType.QUESTION_ANSWER:
+                    highlighted_controls.extend(
+                        (
+                            ft.Markdown(
+                                value=highlight(
+                                    f"**Question:** {question}", search_term
+                                )
+                            ),
+                            ft.Markdown(
+                                value=highlight(
+                                    f"**Answer:** {answer}", search_term
+                                )
+                            ),
+                        )
+                    )
     if not highlighted_controls:
         highlighted_controls.append(ft.Text(value="No results found."))
 
@@ -42,7 +62,7 @@ def create_search_view(page: ft.Page, content: ft.Column, data: list, search_ter
     page.update()
 
 
-def search_input_changed(event, data, content):
+def search_input_changed(event, data: dict[str: list[dict]], content):
     search_term = event.control.value
     create_search_view(event.control.page, content, data, search_term)
 
