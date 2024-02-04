@@ -34,7 +34,7 @@ def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[d
 
             if search_term.lower() in ruling_text.lower() or search_term.lower() in question.lower() or search_term.lower() in answer.lower():
                 if not name_added:
-                    highlighted_controls.append(ft.Markdown(value=mark_subheader(card_name), selectable=True))
+                    highlighted_controls.append(ft.Markdown(value=mark_subheader(card_name), selectable=True, extension_set=ft.MarkdownExtensionSet.GITHUB_FLAVORED))
 
                 if ruling_type == EntryType.ERRATUM:
                     highlighted_controls.append(ft.Markdown(value=highlight(f"**Erratum:** {ruling_text}" ,search_term), selectable=True))
