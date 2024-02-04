@@ -64,7 +64,7 @@ def load_card_names(*card_files):
     }
 
 
-def process_ruling(ruling, item_code):
+def process_ruling(ruling, item_code, updated_at=None):
     logging.info(f"Original ruling: {ruling}, updated_at: {updated_at}")
 
     # Remove strikethrough text in Markdown and HTML
@@ -116,7 +116,7 @@ def process_ruling(ruling, item_code):
         question = ""
         answer = ""
     source = {
-        "updated": date,
+        "updated": date or updated_at,
         "type": source_type,
         "version": version
     }
@@ -128,10 +128,7 @@ def process_ruling(ruling, item_code):
         "card_code": item_code,
     }
 
-def process_json_file(file_path, card_names, updated_at=None):
-    if updated_at is None:
-        updated_at = datetime.datetime.now().isoformat()  # Fallback to current time if not provided
-
+def process_json_file(file_path, card_names): # Fallback to current time if not provided
     try:
         with open(file_path, 'r') as file:
             data = json.load(file)
@@ -159,7 +156,7 @@ def process_json_file(file_path, card_names, updated_at=None):
             rulings = re.split(r"- (?!\bFAQ\b)", text)[1:]  # Split the text by "- " not followed by "FAQ"  # Split the text by "- " to get a list of rulings
             rulings_list = []
             for ruling in rulings:
-                if ruling := process_ruling(ruling, item.get('code'), item.get('updated_at', updated_at)):
+                if ruling := process_ruling(ruling, item.get('code'), item.get('updated_at')):
                     rulings_list.append(ruling)
             processed_data[card_names.get(item.get('code'), "Unknown Card")] = rulings_list
         except Exception as e:
