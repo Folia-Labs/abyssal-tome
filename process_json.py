@@ -17,6 +17,14 @@ NB_PATTERN = re.compile(
 FAQ_PATTERN = re.compile(r"(FAQ),\sv\.(\d+\.\d+),\s(\w+\s\d{4})")
 
 
+STRIKETHROUGH_PATTERN = re.compile(r"~~.*?~~|<s>.*?</s>|<strike>.*?</strike>")
+ESCAPED_DOUBLE_QUOTES_PATTERN = re.compile(r'\\"')
+ESCAPED_ASTERISK_PATTERN = re.compile(r"\*")
+ESCAPED_UNDERSCORE_PATTERN = re.compile(r"\_")
+BOLD_TAGS_PATTERN = re.compile(r"<b>|</b>")
+ITALIC_TAGS_PATTERN = re.compile(r"<i>|</i>")
+NEWLINE_PATTERN = re.compile(r"\\n")
+
 @unique
 class EntryType(str, Enum):
     ERRATUM = "erratum"
@@ -60,7 +68,7 @@ def process_ruling(ruling, item_code):
     logging.info(f"Original ruling: {ruling}")
 
     # Remove strikethrough text in Markdown and HTML
-    ruling = re.sub(r"~~.*?~~|<s>.*?</s>|<strike>.*?</strike>", "", ruling)
+    ruling = STRIKETHROUGH_PATTERN.sub("", ruling)
 
     ruling, source_type, version, date = parse_text(ruling)
     if not ruling.strip():  # Skip rulings that only contain an FAQ reference
@@ -69,13 +77,14 @@ def process_ruling(ruling, item_code):
     ruling = NB_PATTERN.sub("", ruling)
 
     # Remove escaped double quotes
-    ruling = ruling.replace('\\"', '"')
+    ruling = ESCAPED_DOUBLE_QUOTES_PATTERN.sub('"', ruling)
 
-    ruling = ruling.replace(r"\*", r"\\*").replace(r"\_", r"\\_")
+    ruling = ESCAPED_ASTERISK_PATTERN.sub(r"\\*", ruling)
+    ruling = ESCAPED_UNDERSCORE_PATTERN.sub(r"\\_", ruling)
 
-    ruling = ruling.replace("<b>", "**").replace("</b>", "**")  # Replace HTML bold tags with Markdown
-    ruling = ruling.replace("<i>", "*").replace("</i>", "*")  # Replace HTML italic tags with Markdown
-    ruling = ruling.replace("\\n", "")  # Strip newline characters
+    ruling = BOLD_TAGS_PATTERN.sub("**", ruling)  # Replace HTML bold tags with Markdown
+    ruling = ITALIC_TAGS_PATTERN.sub("*", ruling)  # Replace HTML italic tags with Markdown
+    ruling = NEWLINE_PATTERN.sub("", ruling)  # Strip newline characters
 
     if not ruling:
         return None
