@@ -2,7 +2,6 @@ import regex as re
 import codecs
 import logging
 import json
-import re
 from enum import Enum, unique
 from pathlib import Path
 
