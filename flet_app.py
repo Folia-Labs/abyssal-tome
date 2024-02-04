@@ -1,9 +1,37 @@
 import flet as ft
 import json
 import re
+from pathlib import Path
 
 from process_json import EntryType
 
+ICON_PATH = Path("icons/arkham")
+TAG_TO_IMAGE = {
+    "[willpower]": "willpower.png",
+    "[agility]": "agility.png",
+    "[combat]": "combat.png",
+    "[intellect]": "intellect.png",
+    "[skull]": "skull.png",
+    "[cultist]": "cultist.png",
+    "[tablet]": "tablet.png",
+    "[elderthing]": "elderthing.png",
+    "[autofail]": "autofail.png",
+    "[eldersign]": "eldersign.png",
+    "[bless]": "bless.png",
+    "[curse]": "curse.png",
+    "[frost]": "frost.png",
+    "[reaction]": "reaction.png",
+    "[unique]": "unique.png",
+    "[mystic]": "mystic.png",
+    "[guardian]": "guardian.png",
+    "[seeker]": "seeker.png",
+    "[rogue]": "rogue.png",
+    "[free]": "free.png",
+    "[activate]": "activate.png",
+}
+
+# Function to highlight the search term in text
+# It finds the search term in the text and then creates three ft.TextSpan objects:
 
 def load_json_data() -> dict:
     with open('processed_data.json', 'r', encoding='utf-8') as file:
@@ -20,21 +48,44 @@ def mark_subheader(card_name: str) -> str:
 # 2. The search term itself
 # 3. The text after the search term
 # The search term is highlighted by setting its color to yellow
-def highlight(text: str, term: str) -> list[ft.TextSpan]:
-    highlighted_controls = []
-    if term.lower() in text.lower():
-        start = text.lower().find(term.lower())
-        end = start + len(term)
-        highlighted_controls.extend(
-            (
-                ft.TextSpan(text=text[:start]),
+def highlight(text: str, term: str) -> list:
+    spans = []
+    term_lower = term.lower()
+    while text:
+        if term_lower in text.lower():
+            start = text.lower().find(term_lower)
+            end = start + len(term)
+            spans.extend(replace_tags_with_images(text[:start]))
+            spans.append(
                 ft.TextSpan(
-                    text=text[start:end], style=ft.TextStyle(weight=ft.FontWeight.BOLD, bgcolor=ft.colors.BLUE_50)
-                ),
-                ft.TextSpan(text=text[end:]),
+                    text=text[start:end],
+                    style=ft.TextStyle(weight=ft.FontWeight.BOLD, bgcolor=ft.colors.BLUE_50)
+                )
             )
-        )
-    return highlighted_controls
+            text = text[end:]
+        else:
+            spans.extend(replace_tags_with_images(text))
+            break
+    return spans
+
+def replace_tags_with_images(text: str) -> list:
+    spans = []
+    while any(tag in text for tag in TAG_TO_IMAGE):
+        for tag, image_name in TAG_TO_IMAGE.items():
+            if tag in text:
+                index = text.index(tag)
+                # Add the text before the tag as a TextSpan
+                if index > 0:
+                    spans.append(ft.TextSpan(text=text[:index]))
+                # Add the image for the tag
+                spans.append(ft.Image(src=str(ICON_PATH / image_name)))
+                # Remove the processed part of the text
+                text = text[index + len(tag):]
+                break
+    # Add any remaining text as a TextSpan
+    if text:
+        spans.append(ft.TextSpan(text=text))
+    return spans
 
 def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[dict]], search_term: str) -> None:
     text = []
