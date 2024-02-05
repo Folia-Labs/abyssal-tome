@@ -121,18 +121,18 @@ def replace_special_tags(text: str) -> list[ft.TextSpan]:
         remaining_text = text[end:]
 
     remaining_text = text
-    while match := TAG_PATTERN.search(remaining_text):
-        tag = match.group()
-        image_name = TAG_TO_IMAGE[tag]
-        process_match_parts(remaining_text, 0, match.start())
-        spans.append(ft.TextSpan(text=image_name, style=ft.TextStyle(size=20, font_family="Arkham Icons")))
-        process_match_parts(remaining_text, match.start(), match.end())
-
-    while match := LINK_PATTERN.search(remaining_text):
-        link_text, link_url = match.groups()
-        process_match_parts(remaining_text, 0, match.start())
-        spans.append(ft.TextSpan(text=link_text, url=link_url))
-        process_match_parts(remaining_text, match.start(), match.end())
+    while match := LINK_PATTERN.search(remaining_text) or TAG_PATTERN.search(remaining_text):
+        if match.re.pattern == LINK_PATTERN.pattern:
+            link_text, link_url = match.groups()
+            process_match_parts(remaining_text, 0, match.start())
+            spans.append(ft.TextSpan(text=link_text, url=link_url))
+            process_match_parts(remaining_text, match.start(), match.end())
+        else:
+            tag = match.group()
+            image_name = TAG_TO_IMAGE[tag]
+            process_match_parts(remaining_text, 0, match.start())
+            spans.append(ft.TextSpan(text=image_name, style=ft.TextStyle(size=20, font_family="Arkham Icons")))
+            process_match_parts(remaining_text, match.start(), match.end())
 
     if remaining_text:
         spans.append(ft.TextSpan(text=remaining_text))
