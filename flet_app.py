@@ -117,23 +117,27 @@ def replace_special_tags(text: str) -> list[ft.TextSpan]:
     def process_match_parts(text, start, end):
         if start > 0:
             spans.append(ft.TextSpan(text=text[:start]))
-        spans.append(ft.TextSpan(text=text[start:end]))
-        return text[end:]
+        return text, start, end
 
-    while match := TAG_PATTERN.search(text):
+def replace_special_tags(text: str) -> list[ft.TextSpan]:
+    spans = []
+    remaining_text = text
+    while match := TAG_PATTERN.search(remaining_text):
         tag = match.group()
         image_name = TAG_TO_IMAGE[tag]
-        text = process_match_parts(text, 0, match.start())
+        remaining_text, start, end = process_match_parts(remaining_text, 0, match.start())
         spans.append(ft.TextSpan(text=image_name, style=ft.TextStyle(size=20, font_family="Arkham Icons")))
-        text = process_match_parts(text, match.start() + len(tag), match.end())
+        remaining_text, _, _ = process_match_parts(remaining_text, start + len(tag), end)
 
-    while match := LINK_PATTERN.search(text):
-        text = process_match_parts(text, 0, match.start())
-        spans.append(ft.TextSpan(text=match.group(1), url="http://localhost"))
-        text = process_match_parts(text, match.end(), len(text))
+    while match := LINK_PATTERN.search(remaining_text):
+        link_text = match.group(1)
+        link_url = match.group(2)
+        remaining_text, start, end = process_match_parts(remaining_text, 0, match.start())
+        spans.append(ft.TextSpan(text=link_text, url=link_url))
+        remaining_text, _, _ = process_match_parts(remaining_text, end, len(remaining_text))
 
-    if text:
-        spans.append(ft.TextSpan(text=text))
+    if remaining_text:
+        spans.append(ft.TextSpan(text=remaining_text))
 
     return spans
 
