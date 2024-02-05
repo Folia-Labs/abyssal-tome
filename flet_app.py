@@ -113,35 +113,23 @@ TAG_PATTERN = re.compile('|'.join(re.escape(tag) for tag in TAG_TO_IMAGE))
 
 def replace_special_tags(text: str) -> list[ft.TextSpan]:
     spans = []
-
-    def process_match_parts(text, start, end):
-        nonlocal remaining_text
-        if start > 0:
-            spans.append(ft.TextSpan(text=text[:start]))
-        remaining_text = text[end:]
-
     remaining_text = text
-    while remaining_text:
-        link_match = LINK_PATTERN.search(remaining_text)
-        tag_match = TAG_PATTERN.search(remaining_text)
-        if link_match and (not tag_match or link_match.start() < tag_match.start()):
-            link_text, link_url = link_match.groups()
-            process_match_parts(remaining_text, 0, link_match.start())
-            spans.append(ft.TextSpan(text=link_text, url=link_url))
-            process_match_parts(remaining_text, link_match.end(), len(remaining_text))
-        elif tag_match:
-            tag = tag_match.group()
-            image_name = TAG_TO_IMAGE[tag]
-            process_match_parts(remaining_text, 0, tag_match.start())
-            spans.append(ft.TextSpan(text=image_name, style=ft.TextStyle(size=20, font_family="Arkham Icons")))
-            process_match_parts(remaining_text, tag_match.end(), len(remaining_text))
+
+    while match := LINK_PATTERN.search(remaining_text) or TAG_PATTERN.search(remaining_text):
+        start, end = match.span()
+        if start > 0:
+            spans.append(ft.TextSpan(text=remaining_text[:start]))
+        if match.re.pattern == LINK_PATTERN.pattern:
+            link_text, link_url = match.groups()
+            spans.append(ft.TextSpan(text=link_text, style=ft.TextStyle(decoration=ft.TextDecoration.UNDERLINE, color=ft.colors.BLUE_ACCENT_400), url=f"https://arkhamdb.com{link_url}"))
         else:
-            spans.append(ft.TextSpan(text=remaining_text))
-            break
+            tag = match.group()
+            image_name = TAG_TO_IMAGE[tag]
+            spans.append(ft.TextSpan(text=image_name, style=ft.TextStyle(size=20, font_family="Arkham Icons")))
+        remaining_text = remaining_text[end:]
 
     if remaining_text:
         spans.append(ft.TextSpan(text=remaining_text))
-    return spans
 
     return spans
 
