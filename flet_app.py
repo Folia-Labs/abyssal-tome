@@ -122,7 +122,7 @@ def replace_tags_with_images(text: str) -> list:
 
 
 def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[dict]], search_term: str) -> None:
-    text = []
+    content_controls = []
 
     def create_text_spans(text_label: str, text_content: str, search_term: str) -> None:
         text_spans = [
@@ -139,7 +139,11 @@ def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[d
                 text_spans.append(span) # Add the span as is
         text.append(ft.Text(disabled=False, selectable=True, spans=text_spans))
 
+    def add_subheader(card_name: str):
+        content_controls.append(ft.Text(value=mark_subheader(card_name), style=ft.TextStyle(size=20, weight=ft.FontWeight.BOLD)))
+
     for card_name, card_rulings in data.items():
+        has_matching_rulings = False
         for ruling in card_rulings:
             ruling_text = ruling.get('content', {}).get('text', '')
             question = ruling.get('content', {}).get('question', '')
@@ -154,11 +158,17 @@ def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[d
                 elif ruling_type == EntryType.QUESTION_ANSWER:
                     create_text_spans("Question: ", question, search_term)
                     create_text_spans("Answer: ", answer, search_term)
+                has_matching_rulings = True
+        if has_matching_rulings:
+            add_subheader(card_name)
+            content_controls.extend(text)
+            text = []  # Reset text for the next card
 
-    if not text:
+    if not content_controls:
+        content_controls.append(ft.Text("No results found."))
         text.append(ft.Text("No results found."))
 
-    content.controls = text
+    content.controls = content_controls
     page.update()
 
 def search_input_changed(event: ft.ControlEvent, data: dict[str: list[dict]], content):
