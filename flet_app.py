@@ -33,7 +33,7 @@ TAG_TO_IMAGE = {
     "[activate]": "i",
 }
 
-LINK_PATTERN = re.compile(r"\[(.+?)\]\(.+?\)")
+LINK_PATTERN = re.compile(r"\[(.+?)\]\((.+?)\)")
 
 
 # Function to highlight the search term in text
@@ -103,7 +103,7 @@ def highlight(text: str | ft.TextSpan, term: str) -> list:
     return spans
 
 
-LINK_PATTERN = re.compile(r"\[(.+?)\]\(.+?\)")
+LINK_PATTERN = re.compile(r"\[(.+?)\]\((.+?)\)")
 
 import re
 import flet as ft
@@ -130,14 +130,14 @@ def replace_special_tags(text: str) -> list[ft.TextSpan]:
         remaining_text, _, _ = process_match_parts(remaining_text, start + len(tag), end)
 
     while match := LINK_PATTERN.search(remaining_text):
-        link_text = match.group(1)
-        link_url = match.group(2)
+        link_text, link_url = match.groups()
         remaining_text, start, end = process_match_parts(remaining_text, 0, match.start())
         spans.append(ft.TextSpan(text=link_text, url=link_url))
         remaining_text, _, _ = process_match_parts(remaining_text, end, len(remaining_text))
 
     if remaining_text:
         spans.append(ft.TextSpan(text=remaining_text))
+    return spans
 
     return spans
 
