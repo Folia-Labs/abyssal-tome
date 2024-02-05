@@ -142,7 +142,7 @@ def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[d
 
     def add_subheader(card_name: str):
         # Append a subheader to the content_controls list
-        content_controls.append(ft.Text(value=mark_subheader(card_name), style=ft.TextStyle(size=20, weight=ft.FontWeight.BOLD)))
+        content_controls.append(ft.Text(value=card_name, theme_style=ft.TextThemeStyle.HEADLINE_SMALL))
         # Also, append any accumulated text controls to content_controls and reset text
         content_controls.extend(text)
         text.clear()
