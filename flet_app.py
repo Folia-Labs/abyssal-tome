@@ -2,7 +2,7 @@ import flet as ft
 import asyncio
 import contextlib
 import json
-import re
+import regex as re
 import functools
 from pathlib import Path
 
@@ -101,7 +101,9 @@ def highlight(text: str | ft.TextSpan, term: str) -> list:
     return spans
 
 
-def replace_tags_with_images(text: str) -> list:
+LINK_PATTERN = re.compile(r"\[(.+?)\]\(.+?\)")
+
+def replace_tags_with_images(text: str) -> list[ft.TextSpan]:
     spans = []
     while any(tag in text for tag in TAG_TO_IMAGE):
         for tag, image_name in TAG_TO_IMAGE.items():
@@ -115,6 +117,15 @@ def replace_tags_with_images(text: str) -> list:
                 # Remove the processed part of the text
                 text = text[index + len(tag):]
                 break
+    # Process markdown links
+    while match := LINK_PATTERN.search(text):
+        # Add the text before the link as a TextSpan
+        if match.start() > 0:
+            spans.append(ft.TextSpan(text=text[:match.start()]))
+        # Add the link text with the URL set to "http://localhost"
+        spans.append(ft.TextSpan(text=match.group(1), url="http://localhost"))
+        # Remove the processed part of the text
+        text = text[match.end():]
     # Add any remaining text as a TextSpan
     if text:
         spans.append(ft.TextSpan(text=text))
