@@ -113,14 +113,6 @@ TAG_PATTERN = re.compile('|'.join(re.escape(tag) for tag in TAG_TO_IMAGE))
 
 def replace_special_tags(text: str) -> list[ft.TextSpan]:
     spans = []
-
-    def process_match_parts(text, start, end):
-        if start > 0:
-            spans.append(ft.TextSpan(text=text[:start]))
-        return text, start, end
-
-def replace_special_tags(text: str) -> list[ft.TextSpan]:
-    spans = []
     remaining_text = text
     while match := TAG_PATTERN.search(remaining_text):
         tag = match.group()
@@ -128,6 +120,11 @@ def replace_special_tags(text: str) -> list[ft.TextSpan]:
         remaining_text, start, end = process_match_parts(remaining_text, 0, match.start())
         spans.append(ft.TextSpan(text=image_name, style=ft.TextStyle(size=20, font_family="Arkham Icons")))
         remaining_text, _, _ = process_match_parts(remaining_text, start + len(tag), end)
+
+    def process_match_parts(text, start, end):
+        if start > 0:
+            spans.append(ft.TextSpan(text=text[:start]))
+        return text, start, end
 
     while match := LINK_PATTERN.search(remaining_text):
         link_text = match.group(1)
