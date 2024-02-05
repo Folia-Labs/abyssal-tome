@@ -33,8 +33,8 @@ TAG_TO_IMAGE = {
     "[activate]": "i",
 }
 
-
 LINK_PATTERN = re.compile(r"\[(.+?)\]\(.+?\)")
+
 
 # Function to highlight the search term in text
 # It finds the search term in the text and then creates three ft.TextSpan objects:
@@ -105,33 +105,38 @@ def highlight(text: str | ft.TextSpan, term: str) -> list:
 
 LINK_PATTERN = re.compile(r"\[(.+?)\]\(.+?\)")
 
+
+import re
+import flet as ft
+
+TAG_PATTERN = re.compile('|'.join(re.escape(tag) for tag in TAG_TO_IMAGE))
+
 def replace_special_tags(text: str) -> list[ft.TextSpan]:
     spans = []
-    while any(tag in text for tag in TAG_TO_IMAGE):
-        for tag, image_name in TAG_TO_IMAGE.items():
-            if tag in text:
-                index = text.index(tag)
-                # Add the text before the tag as a TextSpan
-                if index > 0:
-                    spans.append(ft.TextSpan(text=text[:index]))
-                # Add the image for the tag
-                spans.append(ft.TextSpan(text=image_name, style=ft.TextStyle(size=20, font_family="Arkham Icons")))
-                # Remove the processed part of the text
-                text = text[index + len(tag):]
-                break
-    # Process markdown links
+
+    def process_match_parts(text, start, end):
+        if start > 0:
+            spans.append(ft.TextSpan(text=text[:start]))
+        spans.append(ft.TextSpan(text=text[start:end]))
+        return text[end:]
+
+    while match := TAG_PATTERN.search(text):
+        tag = match.group()
+        image_name = TAG_TO_IMAGE[tag]
+        text = process_match_parts(text, 0, match.start())
+        spans.append(ft.TextSpan(text=image_name, style=ft.TextStyle(size=20, font_family="Arkham Icons")))
+        text = process_match_parts(text, match.start() + len(tag), match.end())
+
     while match := LINK_PATTERN.search(text):
-        # Add the text before the link as a TextSpan
-        if match.start() > 0:
-            spans.append(ft.TextSpan(text=text[:match.start()]))
-        # Add the link text with the URL set to "http://localhost"
+        text = process_match_parts(text, 0, match.start())
         spans.append(ft.TextSpan(text=match.group(1), url="http://localhost"))
-        # Remove the processed part of the text
-        text = text[match.end():]
-    # Add any remaining text as a TextSpan
+        text = process_match_parts(text, match.end(), len(text))
+
     if text:
         spans.append(ft.TextSpan(text=text))
+
     return spans
+
 
 
 def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[dict]], search_term: str) -> None:
@@ -145,12 +150,12 @@ def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[d
                 style=ft.TextStyle(weight=ft.FontWeight.BOLD),
             )
         ]
-        text_content = replace_tags_with_images(text_content)  # Call replace_tags_with_images function here
+        text_content = replace_special_tags(text_content)  # Call replace_tags_with_images function here
         for span in text_content:
             if isinstance(span, str):
                 text_spans.extend(highlight(span, search_term))
             else:
-                text_spans.append(span) # Add the span as is
+                text_spans.append(span)  # Add the span as is
         text.append(ft.Text(disabled=False, selectable=True, spans=text_spans))
 
     def add_subheader(card_name: str):
@@ -178,16 +183,17 @@ def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[d
                     create_text_spans("Answer: ", answer, search_term)
                 has_matching_rulings = True
         # If there are matching rulings, call add_subheader to handle adding the subheader and text controls
-        if has_matching_rulings: 
+        if has_matching_rulings:
             add_subheader(card_name)
 
     # After processing all cards, if no content_controls were added, it means no results were found
-    if not content_controls: 
+    if not content_controls:
         content_controls.append(ft.Text("No results found."))
         text.append(ft.Text("No results found."))
 
     content.controls = content_controls
     page.update()
+
 
 def search_input_changed(event: ft.ControlEvent, data: dict[str: list[dict]], content):
     @debounce(1.0)
