@@ -122,7 +122,8 @@ def replace_tags_with_images(text: str) -> list:
 
 
 def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[dict]], search_term: str) -> None:
-    content_controls = []
+    content_controls = []  # This will hold all the controls to be added to the content
+    text = []  # Initialize the text list to hold Text controls for each ruling
 
     def create_text_spans(text_label: str, text_content: str, search_term: str) -> None:
         text_spans = [
@@ -140,7 +141,11 @@ def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[d
         text.append(ft.Text(disabled=False, selectable=True, spans=text_spans))
 
     def add_subheader(card_name: str):
+        # Append a subheader to the content_controls list
         content_controls.append(ft.Text(value=mark_subheader(card_name), style=ft.TextStyle(size=20, weight=ft.FontWeight.BOLD)))
+        # Also, append any accumulated text controls to content_controls and reset text
+        content_controls.extend(text)
+        text.clear()
 
     for card_name, card_rulings in data.items():
         has_matching_rulings = False
@@ -159,12 +164,12 @@ def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[d
                     create_text_spans("Question: ", question, search_term)
                     create_text_spans("Answer: ", answer, search_term)
                 has_matching_rulings = True
-        if has_matching_rulings:
+        # If there are matching rulings, call add_subheader to handle adding the subheader and text controls
+        if has_matching_rulings: 
             add_subheader(card_name)
-            content_controls.extend(text)
-            text = []  # Reset text for the next card
 
-    if not content_controls:
+    # After processing all cards, if no content_controls were added, it means no results were found
+    if not content_controls: 
         content_controls.append(ft.Text("No results found."))
         text.append(ft.Text("No results found."))
 
