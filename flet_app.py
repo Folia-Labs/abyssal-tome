@@ -1,35 +1,38 @@
 import flet as ft
 import asyncio
+import contextlib
 import json
 import re
+import functools
 from pathlib import Path
 
 from process_json import EntryType
 
-ICON_PATH = Path("icons/arkham")
 TAG_TO_IMAGE = {
-    "[willpower]": "willpower.png",
-    "[agility]": "agility.png",
-    "[combat]": "combat.png",
-    "[intellect]": "intellect.png",
-    "[skull]": "skull.png",
-    "[cultist]": "cultist.png",
-    "[tablet]": "tablet.png",
-    "[elderthing]": "elderthing.png",
-    "[autofail]": "autofail.png",
-    "[eldersign]": "eldersign.png",
-    "[bless]": "bless.png",
-    "[curse]": "curse.png",
-    "[frost]": "frost.png",
-    "[reaction]": "reaction.png",
-    "[unique]": "unique.png",
-    "[mystic]": "mystic.png",
-    "[guardian]": "guardian.png",
-    "[seeker]": "seeker.png",
-    "[rogue]": "rogue.png",
-    "[free]": "free.png",
-    "[activate]": "activate.png",
+    "[willpower]": "p",
+    "[agility]": "a",
+    "[combat]": "c",
+    "[intellect]": "b",
+    "[skull]": "k",
+    "[cultist]": "l",
+    "[tablet]": "q",
+    "[elderthing]": "n",
+    "[autofail]": "m",
+    "[eldersign]": "o",
+    "[bless]": "v",
+    "[curse]": "w",
+    "[frost]": "x",
+    "[reaction]": "!",
+    "[unique]": "s",
+    "[mystic]": "g",
+    "[guardian]": "f",
+    "[seeker]": "h",
+    "[rogue]": "d",
+    "[survivor]": "e",
+    "[free]": "j",
+    "[activate]": "i",
 }
+
 
 # Function to highlight the search term in text
 # It finds the search term in the text and then creates three ft.TextSpan objects:
@@ -42,13 +45,14 @@ def debounce(wait):
             if debounced._task is not None:
                 debounced._task.cancel()
             debounced._task = asyncio.ensure_future(fn(*args, **kwargs))
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await asyncio.sleep(wait)
                 await debounced._task
-            except asyncio.CancelledError:
-                pass
+
         return debounced
+
     return decorator
+
 
 def load_json_data() -> dict:
     with open('processed_data.json', 'r', encoding='utf-8') as file:
@@ -59,31 +63,43 @@ def load_json_data() -> dict:
 def mark_subheader(card_name: str) -> str:
     return f"## {card_name}"
 
+
 # Function to highlight the search term in text
 # It finds the search term in the text and then creates three ft.TextSpan objects:
 # 1. The text before the search term
 # 2. The search term itself
 # 3. The text after the search term
 # The search term is highlighted by setting its color to yellow
-def highlight(text: str, term: str) -> list:
+def highlight(text: str | ft.TextSpan, term: str) -> list:
     spans = []
-    term_lower = term.lower()
     while text:
-        if term_lower in text.lower():
-            start = text.lower().find(term_lower)
-            end = start + len(term)
-            spans.extend(replace_tags_with_images(text[:start]))
-            spans.append(
-                ft.TextSpan(
-                    text=text[start:end],
-                    style=ft.TextStyle(weight=ft.FontWeight.BOLD, bgcolor=ft.colors.BLUE_50)
+        if isinstance(text, str):
+            if term.lower() in text.lower():
+                start = text.lower().find(term.lower())
+                end = start + len(term)
+                spans.extend(
+                    (
+                        ft.TextSpan(
+                            text=text[:start],
+                        ),
+                        ft.TextSpan(
+                            text=text[start:end],
+                            style=ft.TextStyle(
+                                weight=ft.FontWeight.BOLD,
+                                bgcolor=ft.colors.YELLOW_50,
+                            ),
+                        ),
+                    )
                 )
-            )
-            text = text[end:]
+                text = text[end:]
+            else:
+                spans.append(ft.TextSpan(text=text))
+                break
         else:
-            spans.extend(replace_tags_with_images(text))
-            break
+            spans.append(ft.TextSpan(text=text.text, style=text.style))
+            text = text.spans
     return spans
+
 
 def replace_tags_with_images(text: str) -> list:
     spans = []
@@ -95,7 +111,7 @@ def replace_tags_with_images(text: str) -> list:
                 if index > 0:
                     spans.append(ft.TextSpan(text=text[:index]))
                 # Add the image for the tag
-                spans.append(ft.Image(src=str(ICON_PATH / image_name)))
+                spans.append(ft.TextSpan(text=image_name, style=ft.TextStyle(size=20, font_family="Arkham Icons")))
                 # Remove the processed part of the text
                 text = text[index + len(tag):]
                 break
@@ -104,11 +120,25 @@ def replace_tags_with_images(text: str) -> list:
         spans.append(ft.TextSpan(text=text))
     return spans
 
+
 def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[dict]], search_term: str) -> None:
     text = []
-    text_spans = []
 
-    name_added = False
+    def create_text_spans(text_label: str, text_content: str, search_term: str) -> None:
+        text_spans = [
+            ft.TextSpan(
+                text=text_label,
+                style=ft.TextStyle(weight=ft.FontWeight.BOLD),
+            )
+        ]
+        text_content = replace_tags_with_images(text_content)  # Call replace_tags_with_images function here
+        for span in text_content:
+            if isinstance(span, str):
+                text_spans.extend(highlight(span, search_term))
+            else:
+                text_spans.append(span) # Add the span as is
+        text.append(ft.Text(disabled=False, selectable=True, spans=text_spans))
+
     for card_name, card_rulings in data.items():
         for ruling in card_rulings:
             ruling_text = ruling.get('content', {}).get('text', '')
@@ -117,56 +147,13 @@ def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[d
             ruling_type = ruling.get('type', 'Unknown Type')
 
             if search_term.lower() in ruling_text.lower() or search_term.lower() in question.lower() or search_term.lower() in answer.lower():
-                if not name_added:
-                    text.append(
-                        ft.Text(
-                            value=card_name,
-                            disabled=False,
-                            selectable=True,
-                            theme_style=ft.TextThemeStyle.HEADLINE_SMALL,
-                        )
-                    )
-
                 if ruling_type == EntryType.ERRATUM:
-                    text_spans = [
-                        ft.TextSpan(
-                            text="Erratum: ",
-                            style=ft.TextStyle(weight=ft.FontWeight.BOLD),
-                        )
-                    ]
-                    text_spans.extend(highlight(ruling_text, search_term))
-                    text.append(ft.Text(disabled=False, selectable=True, spans=text_spans) )
+                    create_text_spans("Erratum: ", ruling_text, search_term)
                 elif ruling_type == EntryType.CLARIFICATION:
-                    text_spans = [
-                        ft.TextSpan(
-                            text="Clarification: ",
-                            style=ft.TextStyle(weight=ft.FontWeight.BOLD),
-                        )
-                    ]
-                    text_spans.extend(highlight(ruling_text, search_term))
-                    text.append(ft.Text(disabled=False, selectable=True, spans=text_spans))
-
+                    create_text_spans("Clarification: ", ruling_text, search_term)
                 elif ruling_type == EntryType.QUESTION_ANSWER:
-                    text_spans = [
-                        ft.TextSpan(
-                            text="Question: ",
-                            style=ft.TextStyle(weight=ft.FontWeight.BOLD),
-                        )
-                    ]
-                    text_spans.extend(
-                        highlight(question, search_term)
-                    )
-                    text_spans.append(ft.TextSpan(text="\n"))
-                    text_spans.append(
-                        ft.TextSpan(
-                            text="Answer: ",
-                            style=ft.TextStyle(weight=ft.FontWeight.BOLD)
-                        )
-                    )
-                    text_spans.extend(
-                        highlight(answer, search_term)
-                    )
-                    text.append(ft.Text(disabled=False, selectable=True, spans=text_spans))
+                    create_text_spans("Question: ", question, search_term)
+                    create_text_spans("Answer: ", answer, search_term)
 
     if not text:
         text.append(ft.Text("No results found."))
@@ -174,9 +161,8 @@ def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[d
     content.controls = text
     page.update()
 
-
 def search_input_changed(event: ft.ControlEvent, data: dict[str: list[dict]], content):
-    @debounce(0.3)
+    @debounce(1.0)
     async def debounced_search(event: ft.ControlEvent, data: dict[str: list[dict]], content):
         search_term = event.control.value
         create_search_view(event.control.page, content, data, search_term)
@@ -185,6 +171,9 @@ def search_input_changed(event: ft.ControlEvent, data: dict[str: list[dict]], co
 
 
 def main(page: ft.Page) -> None:
+    page.fonts = {
+        "Arkham Icons": "/fonts/arkham-icons.otf"
+    }
     content = ft.Column(expand=True, scroll=ft.ScrollMode.AUTO)
     page.add(content)
 
@@ -201,4 +190,4 @@ def main(page: ft.Page) -> None:
 
 
 if __name__ == "__main__":
-    ft.app(target=main, assets_dir="icons")
+    ft.app(target=main, assets_dir="assets")
