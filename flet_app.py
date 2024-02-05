@@ -34,6 +34,8 @@ TAG_TO_IMAGE = {
 }
 
 
+LINK_PATTERN = re.compile(r"\[(.+?)\]\(.+?\)")
+
 # Function to highlight the search term in text
 # It finds the search term in the text and then creates three ft.TextSpan objects:
 
@@ -103,7 +105,7 @@ def highlight(text: str | ft.TextSpan, term: str) -> list:
 
 LINK_PATTERN = re.compile(r"\[(.+?)\]\(.+?\)")
 
-def replace_tags_with_images(text: str) -> list[ft.TextSpan]:
+def replace_special_tags(text: str) -> list[ft.TextSpan]:
     spans = []
     while any(tag in text for tag in TAG_TO_IMAGE):
         for tag, image_name in TAG_TO_IMAGE.items():
