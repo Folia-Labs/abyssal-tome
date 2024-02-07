@@ -90,18 +90,38 @@ def highlight(text, term: str) -> list:
 
 
 @highlight.register
-def _(text: str, term: str) -> list:
-    return _highlight_string(text, term)
+def _(text: str, term: str) -> list[ft.TextSpan]:
+    spans = []
+    lower_text = text.lower()
+    lower_term = term.lower()
+    start = 0
+    while (index := lower_text.find(lower_term, start)) != -1:
+        if index > start:
+            spans.append(ft.TextSpan(text=text[start:index]))
+        spans.append(ft.TextSpan(
+            text=text[index:index + len(term)],
+            style=ft.TextStyle(weight=ft.FontWeight.BOLD, bgcolor=ft.colors.BLUE_50)
+        ))
+        start = index + len(term)
+    if start < len(text):
+        spans.append(ft.TextSpan(text=text[start:]))
+    return spans
 
 
 @highlight.register
-def _(text: ft.TextSpan, term: str) -> list:
-    return _highlight_textspan(text, term)
+def _(text: ft.TextSpan, term: str) -> list[ft.TextSpan]:
+    if text.spans:
+        return [ft.TextSpan(spans=highlight(text.spans, term), style=text.style)]
+    else:
+        return highlight(text.text, term)
 
 
 @highlight.register
-def _(text: list, term: str) -> list:
-    return _highlight_list(text, term)
+def _(text: list, term: str) -> list[ft.TextSpan]:
+    highlighted_spans = []
+    for span in text:
+        highlighted_spans.extend(highlight(span, term))
+    return highlighted_spans
 
 
 def _highlight_string(text, term) -> list:
