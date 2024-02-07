@@ -116,31 +116,6 @@ def highlight(text: str | ft.TextSpan | list, term: str) -> list:
                 else:
                     spans.append(ft.TextSpan(text=text.text, style=text.style))
                 text = ""
-        if isinstance(text, str):
-            if term.lower() in text.lower():
-                start = text.lower().find(term.lower())
-                end = start + len(term)
-                spans.extend(
-                    (
-                        ft.TextSpan(
-                            text=text[:start],
-                        ),
-                        ft.TextSpan(
-                            text=text[start:end],
-                            style=ft.TextStyle(
-                                weight=ft.FontWeight.BOLD,
-                                bgcolor=ft.colors.BLUE_50,
-                            ),
-                        ),
-                    )
-                )
-                text = text[end:]
-            else:
-                spans.append(ft.TextSpan(text=text))
-                break
-        else:
-            spans.append(ft.TextSpan(text=text.text, style=text.style))
-            text = text.spans
     return spans
 
 
