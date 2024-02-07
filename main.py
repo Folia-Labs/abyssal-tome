@@ -109,13 +109,13 @@ def highlight(text: str | ft.TextSpan | list, term: str) -> list:
                     text = text[end:]
                 else:
                     spans.append(ft.TextSpan(text=text))
-                    break
+                    text = ""
             elif isinstance(text, ft.TextSpan):
                 if text.spans:
                     spans.extend(highlight(text.spans, term))
                 else:
                     spans.append(ft.TextSpan(text=text.text, style=text.style))
-                text = None
+                text = ""
         if isinstance(text, str):
             if term.lower() in text.lower():
                 start = text.lower().find(term.lower())
