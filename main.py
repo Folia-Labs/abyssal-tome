@@ -81,9 +81,41 @@ def load_json_data() -> dict:
 # 2. The search term itself
 # 3. The text after the search term
 # The search term is highlighted by setting its color to yellow
-def highlight(text: str | ft.TextSpan, term: str) -> list:
+def highlight(text: str | ft.TextSpan | list, term: str) -> list:
     spans = []
-    while text:
+    if isinstance(text, list):
+        for span in text:
+            spans.extend(highlight(span, term))
+    else:
+        while text:
+            if isinstance(text, str):
+                if term.lower() in text.lower():
+                    start = text.lower().find(term.lower())
+                    end = start + len(term)
+                    spans.extend(
+                        (
+                            ft.TextSpan(
+                                text=text[:start],
+                            ),
+                            ft.TextSpan(
+                                text=text[start:end],
+                                style=ft.TextStyle(
+                                    weight=ft.FontWeight.BOLD,
+                                    bgcolor=ft.colors.YELLOW_50,
+                                ),
+                            ),
+                        )
+                    )
+                    text = text[end:]
+                else:
+                    spans.append(ft.TextSpan(text=text))
+                    break
+            elif isinstance(text, ft.TextSpan):
+                if text.spans:
+                    spans.extend(highlight(text.spans, term))
+                else:
+                    spans.append(ft.TextSpan(text=text.text, style=text.style))
+                text = None
         if isinstance(text, str):
             if term.lower() in text.lower():
                 start = text.lower().find(term.lower())
