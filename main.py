@@ -1,3 +1,4 @@
+import functools
 from enum import StrEnum, unique
 
 import flet as ft
@@ -10,6 +11,7 @@ from pathlib import Path
 from gql import Client, gql
 from gql.transport.aiohttp import AIOHTTPTransport as GQL_Transport
 
+
 # from gql.utilities.build_client_schema import GraphQLSchema
 
 @unique
@@ -17,6 +19,7 @@ class EntryType(StrEnum):
     ERRATUM = "erratum"
     QUESTION_ANSWER = "question/answer"
     CLARIFICATION = "clarification"
+
 
 TAG_TO_IMAGE = {
     "[willpower]": "p",
@@ -85,17 +88,21 @@ def load_json_data() -> dict:
 def highlight(text, term: str) -> list:
     raise ValueError("Unsupported text type for highlighting")
 
+
 @highlight.register
 def _(text: str, term: str) -> list:
     return _highlight_string(text, term)
+
 
 @highlight.register
 def _(text: ft.TextSpan, term: str) -> list:
     return _highlight_textspan(text, term)
 
+
 @highlight.register
 def _(text: list, term: str) -> list:
     return _highlight_list(text, term)
+
 
 def _highlight_string(text, term) -> list:
     spans = []
@@ -106,7 +113,7 @@ def _highlight_string(text, term) -> list:
         if index > start:
             spans.append(ft.TextSpan(text=text[start:index]))
         spans.append(ft.TextSpan(
-            text=text[index:index+len(term)],
+            text=text[index:index + len(term)],
             style=ft.TextStyle(weight=ft.FontWeight.BOLD, bgcolor=ft.colors.BLUE_50)
         ))
         start = index + len(term)
@@ -114,11 +121,13 @@ def _highlight_string(text, term) -> list:
         spans.append(ft.TextSpan(text=text[start:]))
     return spans
 
+
 def _highlight_textspan(textspan, term) -> list:
     if textspan.spans:
         return [ft.TextSpan(spans=_highlight_list(textspan.spans, term), style=textspan.style)]
     else:
         return _highlight_string(textspan.text, term)
+
 
 def _highlight_list(spans, term) -> list:
     highlighted_spans = []
