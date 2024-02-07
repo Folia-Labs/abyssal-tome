@@ -111,18 +111,26 @@ def _(text: str, term: str) -> list[ft.TextSpan]:
 @highlight.register
 def _(text: ft.TextSpan, term: str) -> list[ft.TextSpan]:
     if text.spans:
-        highlighted_spans = []
-        for span in text.spans:
-            highlighted_spans.extend(highlight(span, term))
+        # If the TextSpan has nested spans, recursively highlight each nested span
+        highlighted_spans = [highlight(span, term) for span in text.spans]
         return [ft.TextSpan(spans=highlighted_spans, style=text.style)]
     else:
+        # If the TextSpan does not have nested spans, highlight the text directly
         spans = []
         lower_text = text.text.lower()
         lower_term = term.lower()
-        # ... (continue with the logic from _highlight_string)
-        return [ft.TextSpan(spans=highlight(text.spans, term), style=text.style)]
-    else:
-        return highlight(text.text, term)
+        start = 0
+        while (index := lower_text.find(lower_term, start)) != -1:
+            if index > start:
+                spans.append(ft.TextSpan(text=text.text[start:index]))
+            spans.append(ft.TextSpan(
+                text=text.text[index:index + len(term)],
+                style=ft.TextStyle(weight=ft.FontWeight.BOLD, bgcolor=ft.colors.BLUE_50)
+            ))
+            start = index + len(term)
+        if start < len(text.text):
+            spans.append(ft.TextSpan(text=text.text[start:]))
+        return [ft.TextSpan(spans=spans, style=text.style)]
 
 
 @highlight.register
