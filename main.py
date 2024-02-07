@@ -111,6 +111,15 @@ def _(text: str, term: str) -> list[ft.TextSpan]:
 @highlight.register
 def _(text: ft.TextSpan, term: str) -> list[ft.TextSpan]:
     if text.spans:
+        highlighted_spans = []
+        for span in text.spans:
+            highlighted_spans.extend(highlight(span, term))
+        return [ft.TextSpan(spans=highlighted_spans, style=text.style)]
+    else:
+        spans = []
+        lower_text = text.text.lower()
+        lower_term = term.lower()
+        # ... (continue with the logic from _highlight_string)
         return [ft.TextSpan(spans=highlight(text.spans, term), style=text.style)]
     else:
         return highlight(text.text, term)
@@ -142,18 +151,6 @@ def _highlight_string(text, term) -> list:
     return spans
 
 
-def _highlight_textspan(textspan, term) -> list:
-    if textspan.spans:
-        return [ft.TextSpan(spans=_highlight_list(textspan.spans, term), style=textspan.style)]
-    else:
-        return _highlight_string(textspan.text, term)
-
-
-def _highlight_list(spans, term) -> list:
-    highlighted_spans = []
-    for span in spans:
-        highlighted_spans.extend(highlight(span, term))
-    return highlighted_spans
 
 
 LINK_PATTERN = re.compile(r"\[(.+?)\]\((.+?)\)")
