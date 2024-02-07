@@ -82,41 +82,43 @@ def load_json_data() -> dict:
 # 3. The text after the search term
 # The search term is highlighted by setting its color to yellow
 def highlight(text: str | ft.TextSpan | list, term: str) -> list:
-    spans = []
-    if isinstance(text, list):
-        for span in text:
-            spans.extend(highlight(span, term))
+    if isinstance(text, str):
+        return _highlight_string(text, term)
+    elif isinstance(text, ft.TextSpan):
+        return _highlight_textspan(text, term)
+    elif isinstance(text, list):
+        return _highlight_list(text, term)
     else:
-        while text:
-            if isinstance(text, str):
-                if term.lower() in text.lower():
-                    start = text.lower().find(term.lower())
-                    end = start + len(term)
-                    spans.extend(
-                        (
-                            ft.TextSpan(
-                                text=text[:start],
-                            ),
-                            ft.TextSpan(
-                                text=text[start:end],
-                                style=ft.TextStyle(
-                                    weight=ft.FontWeight.BOLD,
-                                    bgcolor=ft.colors.BLUE_50,
-                                ),
-                            ),
-                        )
-                    )
-                    text = text[end:]
-                else:
-                    spans.append(ft.TextSpan(text=text))
-                    text = ""
-            elif isinstance(text, ft.TextSpan):
-                if text.spans:
-                    spans.extend(highlight(text.spans, term))
-                else:
-                    spans.append(ft.TextSpan(text=text.text, style=text.style))
-                text = ""
+        raise ValueError("Unsupported text type for highlighting")
+
+def _highlight_string(text: str, term: str) -> list:
+    spans = []
+    lower_text = text.lower()
+    lower_term = term.lower()
+    start = 0
+    while (index := lower_text.find(lower_term, start)) != -1:
+        if index > start:
+            spans.append(ft.TextSpan(text=text[start:index]))
+        spans.append(ft.TextSpan(
+            text=text[index:index+len(term)],
+            style=ft.TextStyle(weight=ft.FontWeight.BOLD, bgcolor=ft.colors.BLUE_50)
+        ))
+        start = index + len(term)
+    if start < len(text):
+        spans.append(ft.TextSpan(text=text[start:]))
     return spans
+
+def _highlight_textspan(textspan: ft.TextSpan, term: str) -> list:
+    if textspan.spans:
+        return [ft.TextSpan(spans=_highlight_list(textspan.spans, term), style=textspan.style)]
+    else:
+        return _highlight_string(textspan.text, term)
+
+def _highlight_list(spans: list, term: str) -> list:
+    highlighted_spans = []
+    for span in spans:
+        highlighted_spans.extend(highlight(span, term))
+    return highlighted_spans
 
 
 LINK_PATTERN = re.compile(r"\[(.+?)\]\((.+?)\)")
