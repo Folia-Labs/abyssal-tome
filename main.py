@@ -101,7 +101,7 @@ def highlight(text: str | ft.TextSpan | list, term: str) -> list:
                                 text=text[start:end],
                                 style=ft.TextStyle(
                                     weight=ft.FontWeight.BOLD,
-                                    bgcolor=ft.colors.YELLOW_50,
+                                    bgcolor=ft.colors.BLUE_50,
                                 ),
                             ),
                         )
@@ -129,7 +129,7 @@ def highlight(text: str | ft.TextSpan | list, term: str) -> list:
                             text=text[start:end],
                             style=ft.TextStyle(
                                 weight=ft.FontWeight.BOLD,
-                                bgcolor=ft.colors.YELLOW_50,
+                                bgcolor=ft.colors.BLUE_50,
                             ),
                         ),
                     )
