@@ -5,7 +5,7 @@ import asyncio
 import contextlib
 import json
 import regex as re
-import functools
+from functools import singledispatch
 from pathlib import Path
 from gql import Client, gql
 from gql.transport.aiohttp import AIOHTTPTransport as GQL_Transport
@@ -81,17 +81,23 @@ def load_json_data() -> dict:
 # 2. The search term itself
 # 3. The text after the search term
 # The search term is highlighted by setting its color to yellow
-def highlight(text: str | ft.TextSpan | list, term: str) -> list:
-    if isinstance(text, str):
-        return _highlight_string(text, term)
-    elif isinstance(text, ft.TextSpan):
-        return _highlight_textspan(text, term)
-    elif isinstance(text, list):
-        return _highlight_list(text, term)
-    else:
-        raise ValueError("Unsupported text type for highlighting")
+@singledispatch
+def highlight(text, term: str) -> list:
+    raise ValueError("Unsupported text type for highlighting")
 
-def _highlight_string(text: str, term: str) -> list:
+@highlight.register
+def _(text: str, term: str) -> list:
+    return _highlight_string(text, term)
+
+@highlight.register
+def _(text: ft.TextSpan, term: str) -> list:
+    return _highlight_textspan(text, term)
+
+@highlight.register
+def _(text: list, term: str) -> list:
+    return _highlight_list(text, term)
+
+def _highlight_string(text, term) -> list:
     spans = []
     lower_text = text.lower()
     lower_term = term.lower()
@@ -108,13 +114,13 @@ def _highlight_string(text: str, term: str) -> list:
         spans.append(ft.TextSpan(text=text[start:]))
     return spans
 
-def _highlight_textspan(textspan: ft.TextSpan, term: str) -> list:
+def _highlight_textspan(textspan, term) -> list:
     if textspan.spans:
         return [ft.TextSpan(spans=_highlight_list(textspan.spans, term), style=textspan.style)]
     else:
         return _highlight_string(textspan.text, term)
 
-def _highlight_list(spans: list, term: str) -> list:
+def _highlight_list(spans, term) -> list:
     highlighted_spans = []
     for span in spans:
         highlighted_spans.extend(highlight(span, term))
