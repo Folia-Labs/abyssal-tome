@@ -134,59 +134,55 @@ def _(text: list, term: str) -> list[ft.TextSpan]:
     return highlighted_spans
 
 
+def append_span(spans, text, style=None, on_click=None):
+    if text:
+        spans.append(ft.TextSpan(text=text, style=style or ft.TextStyle(), on_click=on_click))
+
+
+def handle_match(spans, pattern, text, handler):
+    remaining_text = text
+    while re_match := pattern.search(remaining_text):
+        start, end = re_match.span()
+        append_span(spans, remaining_text[:start])
+        handler(spans, re_match)
+        remaining_text = remaining_text[end:]
+    append_span(spans, remaining_text)
+
+
 def replace_special_tags(page: ft.Page, ruling_text: str) -> list[ft.TextSpan]:
     spans = []
-    remaining_text = ruling_text
-    if not remaining_text:
+    if not ruling_text:
         logging.warning("replace_special_tags called with empty ruling_text.")
-
-    # First, handle the LINK_PATTERN
-    while re_match := LINK_PATTERN.search(remaining_text):
-        start, end = re_match.span()
-        if start > 0:
-            spans.append(ft.TextSpan(text=remaining_text[:start], style=ft.TextStyle()))
-
+        return spans
+    def handle_link(spans, re_match):
         link_text, link_url = re_match.groups()
-        card_id = link_url.split("/")[-1]
-        spans.append(
-            ft.TextSpan(
-                text=link_text,
-                style=ft.TextStyle(
-                    decoration=ft.TextDecoration.UNDERLINE,
-                    color=ft.colors.BLUE_ACCENT_400,
-                    bgcolor=ft.colors.DEEP_ORANGE_50,
-                ),
-                on_click=lambda event, card_id=card_id: on_card_click(event, page, card_id)
-            )
+        card_code = link_url.split("/")[-1]
+        append_span(
+            spans,
+            link_text,
+            ft.TextStyle(
+                decoration=ft.TextDecoration.UNDERLINE,
+                color=ft.colors.BLUE_ACCENT_400,
+                bgcolor=ft.colors.DEEP_ORANGE_50,
+            ),
+            lambda event, card_id=card_code: on_card_click(event, page, card_id)
         )
-        remaining_text = remaining_text[end:]
 
-    # Then, handle the TAG_PATTERN
-    while re_match := TAG_PATTERN.search(remaining_text):
-        start, end = re_match.span()
-        if start > 0:
-            spans.append(ft.TextSpan(text=remaining_text[:start], style=ft.TextStyle()))
-
+    def handle_tag(spans, re_match):
         tag = re_match.group()
         if tag not in TAG_TO_LETTER:
             logging.warning(f"Unsupported tag: {tag}")
-            spans.append(ft.TextSpan(text=tag, style=ft.TextStyle()))
+            append_span(spans, tag)
         else:
             tag_letter = TAG_TO_LETTER[tag]
-            spans.append(
-                ft.TextSpan(
-                    text=tag_letter,
-                    style=ft.TextStyle(
-                        size=20,
-                        font_family="Arkham Icons")
-                )
+            append_span(
+                spans,
+                tag_letter,
+                ft.TextStyle(size=20, font_family="Arkham Icons")
             )
 
-        remaining_text = remaining_text[end:]
-
-    if remaining_text:
-        spans.append(ft.TextSpan(text=remaining_text, style=ft.TextStyle()))
-
+    handle_match(spans, LINK_PATTERN, ruling_text, handle_link)
+    handle_match(spans, TAG_PATTERN, ruling_text, handle_tag)
 
     if not spans:
         logging.error(f"No spans were created for ruling_text: {ruling_text}")
@@ -259,7 +255,7 @@ class SearchView:
             logging.warning(
                 f"create_text_spans called with empty ruling_text for ruling_type: {ruling_type} and question_or_answer: {question_or_answer}")
             return ft.Text(disabled=False, selectable=True, spans=text_spans)
-        ruling_text_control = replace_special_tags(self.page, ruling_text)
+        ruling_text_control_spans = replace_special_tags(self.page, ruling_text)
 
         # Highlight the spans that match the search term
         for span in ruling_text_control_spans:
