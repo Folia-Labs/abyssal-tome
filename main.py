@@ -246,8 +246,14 @@ class SearchView:
             else:
                 text_spans.extend(highlight_text_span(span, search_term))  # Add the span as is
         return ft.Text(disabled=False, selectable=True, spans=text_spans)
+class SearchView:
+    def __init__(self, page: ft.Page, data: dict[str, list[dict]]):
+        self.page = page
+        self.page_content: ft.Column = page.controls[0]
+        self.data = data
 
     async def update_search_view(self, search_term: str) -> None:
+        self.page_content.controls.clear()  # Clear existing controls before adding new ones
         content_controls = []  # This will hold all the controls to be added to the content
         text = []  # Initialize the text list to hold Text controls for each ruling
 
