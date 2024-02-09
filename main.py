@@ -312,11 +312,13 @@ class SearchView:
                         text.append(
                             self.create_text_spans(ruling_type, search_term, ruling_text))
 
-                add_subheader(card_name)
+                # Moved the add_subheader call outside the loop
 
                 if not card_added:
                     add_subheader(card_name)
                     card_added = True
+                # Clear the text list after adding its contents to content_controls
+                text.clear()
 
         # After processing all cards, if no content_controls were added, it means no results were found
         if not content_controls:
