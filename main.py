@@ -33,7 +33,7 @@ class QAType(StrEnum):
     ANSWER = "answer"
 
 
-TAG_TO_IMAGE = {
+TAG_TO_LETTER = {
     "[willpower]": "p",
     "[agility]": "a",
     "[combat]": "c",
@@ -59,7 +59,7 @@ TAG_TO_IMAGE = {
 }
 
 LINK_PATTERN = re.compile(r"\[(.+?)\]\((.+?)\)")
-TAG_PATTERN = re.compile('|'.join(re.escape(tag) for tag in TAG_TO_IMAGE))
+TAG_PATTERN = re.compile('|'.join(re.escape(tag) for tag in TAG_TO_LETTER))
 
 transport = GQL_Transport(url="https://gapi.arkhamcards.com/v1/graphql")
 gql_client = Client(transport=transport, fetch_schema_from_transport=True)
@@ -88,12 +88,16 @@ def _(text: str, term: str) -> list[ft.TextSpan]:
         if start > 0:
             spans.append(ft.TextSpan(
                 text=remaining_text[:start],
-                style=ft.TextStyle(
-                    weight=ft.FontWeight.BOLD,
-                    bgcolor=ft.colors.DEEP_ORANGE_50
                 )
             )
+
+        spans.append(ft.TextSpan(
+            text=text[match.start():match.end()],
+            style=ft.TextStyle(
+                weight=ft.FontWeight.BOLD,
+                bgcolor=ft.colors.DEEP_ORANGE_50
             )
+        ))
 
         remaining_text = remaining_text[end:]
         if remaining_text:
@@ -157,15 +161,19 @@ def replace_special_tags(page: ft.Page, ruling_text: str) -> ft.Text:
 
             case TAG_PATTERN.pattern:
                 tag = re_match.group()
-                tag_letter = TAG_TO_IMAGE[tag]
-                spans.append(
-                    ft.TextSpan(
-                        text=tag_letter,
-                        style=ft.TextStyle(
-                            size=20,
-                            font_family="Arkham Icons")
+                if tag in TAG_TO_LETTER:
+                    tag_letter = TAG_TO_LETTER[tag]
+                    spans.append(
+                        ft.TextSpan(
+                            text=tag_letter,
+                            style=ft.TextStyle(
+                                size=20,
+                                font_family="Arkham Icons")
+                        )
                     )
-                )
+                else:
+                    logging.warning(f"Unsupported tag: {tag}")
+                    spans.append(ft.TextSpan(text=tag, style=ft.TextStyle()))
 
             case _:
                 logging.warning(f"Unsupported pattern: {re_match.re.pattern}")
@@ -241,19 +249,10 @@ class SearchView:
 
         # Highlight the spans that match the search term
         for span in ruling_text_control.spans:
-            if isinstance(span, str):
-                text_spans.extend(highlight_text_span(span, search_term))
-            else:
-                text_spans.extend(highlight_text_span(span, search_term))  # Add the span as is
+            text_spans.extend(highlight_text_span(span, search_term))
         return ft.Text(disabled=False, selectable=True, spans=text_spans)
-class SearchView:
-    def __init__(self, page: ft.Page, data: dict[str, list[dict]]):
-        self.page = page
-        self.page_content: ft.Column = page.controls[0]
-        self.data = data
 
     async def update_search_view(self, search_term: str) -> None:
-        self.page_content.controls.clear()  # Clear existing controls before adding new ones
         content_controls = []  # This will hold all the controls to be added to the content
         text = []  # Initialize the text list to hold Text controls for each ruling
 
@@ -301,6 +300,7 @@ class SearchView:
             content_controls.append(ft.Text("No results found."))
             text.append(ft.Text("No results found."))
 
+        self.page_content.controls = []  # Clear the content controls
         self.page_content.controls += content_controls
         await self.page.update_async()
 
