@@ -1,24 +1,36 @@
-import functools
+import itertools
+import logging
+import sys
 from enum import StrEnum, unique
+from pathlib import Path
 
 import flet as ft
 import asyncio
-import contextlib
 import json
 import regex as re
 from functools import singledispatch
-from pathlib import Path
 from gql import Client, gql
 from gql.transport.aiohttp import AIOHTTPTransport as GQL_Transport
+
+from utils import debounce
+
+logging.basicConfig(level=logging.WARNING, stream=sys.stdout)
 
 
 # from gql.utilities.build_client_schema import GraphQLSchema
 
 @unique
 class EntryType(StrEnum):
+    UNKNOWN = "unknown"
     ERRATUM = "erratum"
     QUESTION_ANSWER = "question/answer"
     CLARIFICATION = "clarification"
+
+
+@unique
+class QAType(StrEnum):
+    QUESTION = "question"
+    ANSWER = "answer"
 
 
 TAG_TO_IMAGE = {
@@ -47,147 +59,118 @@ TAG_TO_IMAGE = {
 }
 
 LINK_PATTERN = re.compile(r"\[(.+?)\]\((.+?)\)")
+TAG_PATTERN = re.compile('|'.join(re.escape(tag) for tag in TAG_TO_IMAGE))
 
 transport = GQL_Transport(url="https://gapi.arkhamcards.com/v1/graphql")
 gql_client = Client(transport=transport, fetch_schema_from_transport=True)
 
 
-# Function to highlight the search term in text
-# It finds the search term in the text and then creates three ft.TextSpan objects:
-
-def debounce(wait):
-    def decorator(fn):
-        @functools.wraps(fn)
-        async def debounced(*args, **kwargs):
-            debounced._task = getattr(debounced, '_task', None)
-            if debounced._task is not None:
-                debounced._task.cancel()
-            debounced._task = asyncio.ensure_future(fn(*args, **kwargs))
-            with contextlib.suppress(asyncio.CancelledError):
-                await asyncio.sleep(wait)
-                await debounced._task
-
-        return debounced
-
-    return decorator
-
-
 def load_json_data() -> dict:
-    with open('assets/processed_data.json', 'r', encoding='utf-8') as file:
+    with open(Path('assets/processed_data.json'), 'r', encoding='utf-8') as file:
         data = json.load(file)
     return data
 
 
-# Function to highlight the search term in text
-# It finds the search term in the text and then creates three ft.TextSpan objects:
-# 1. The text before the search term
-# 2. The search term itself
-# 3. The text after the search term
-# The search term is highlighted by setting its color to yellow
 @singledispatch
-def highlight(text, term: str) -> list:
+def highlight_text_span(text, term: str) -> list[ft.TextSpan]:
     raise ValueError("Unsupported text type for highlighting")
 
 
-@highlight.register
+@highlight_text_span.register
 def _(text: str, term: str) -> list[ft.TextSpan]:
-    spans = []
     lower_text = text.lower()
     lower_term = term.lower()
-    start = 0
-    while (index := lower_text.find(lower_term, start)) != -1:
-        if index > start:
-            spans.append(ft.TextSpan(text=text[start:index]))
-        spans.append(ft.TextSpan(
-            text=text[index:index + len(term)],
-            style=ft.TextStyle(weight=ft.FontWeight.BOLD, bgcolor=ft.colors.BLUE_50)
-        ))
-        start = index + len(term)
-    if start < len(text):
-        spans.append(ft.TextSpan(text=text[start:]))
+    pattern = re.compile(re.escape(lower_term))
+    spans = []
+    remaining_text = lower_text
+    while match := pattern.search(remaining_text):
+        start, end = match.span()
+        if start > 0:
+            spans.append(ft.TextSpan(
+                text=remaining_text[:start],
+                style=ft.TextStyle(
+                    weight=ft.FontWeight.BOLD,
+                    bgcolor=ft.colors.DEEP_ORANGE_50
+                )
+            )
+            )
+
+        remaining_text = remaining_text[end:]
+        if remaining_text:
+            spans.append(ft.TextSpan(text=remaining_text))
+
     return spans
 
 
-@highlight.register
+@highlight_text_span.register
 def _(text: ft.TextSpan, term: str) -> list[ft.TextSpan]:
+    logging.info("Highlight function called with term: %s", term)
     if text.spans:
+        logging.info("TextSpan has nested spans.")
         # If the TextSpan has nested spans, recursively highlight each nested span
-        highlighted_spans = [highlight(span, term) for span in text.spans]
+        highlighted_spans = [highlight_text_span(span, term) for span in text.spans]
+        # Flatten the list of highlighted_spans
+        highlighted_spans = list(itertools.chain(*highlighted_spans))
+        logging.info("Highlighted spans: %s", highlighted_spans)
         return [ft.TextSpan(spans=highlighted_spans, style=text.style)]
     else:
-        # If the TextSpan does not have nested spans, highlight the text directly
+        logging.info("TextSpan does not have nested spans.")
         spans = []
-        lower_text = text.text.lower()
-        lower_term = term.lower()
-        start = 0
-        while (index := lower_text.find(lower_term, start)) != -1:
-            if index > start:
-                spans.append(ft.TextSpan(text=text.text[start:index]))
-            spans.append(ft.TextSpan(
-                text=text.text[index:index + len(term)],
-                style=ft.TextStyle(weight=ft.FontWeight.BOLD, bgcolor=ft.colors.BLUE_50)
-            ))
-            start = index + len(term)
-        if start < len(text.text):
-            spans.append(ft.TextSpan(text=text.text[start:]))
-        return [ft.TextSpan(spans=spans, style=text.style)]
+        spans.extend(highlight_text_span(text.text, term))
+        logging.info("Final spans: %s", spans)
+        return spans
 
 
-@highlight.register
+@highlight_text_span.register
 def _(text: list, term: str) -> list[ft.TextSpan]:
+    logging.warning(f"highlight_text_span called with term: {term}")
     highlighted_spans = []
     for span in text:
-        highlighted_spans.extend(highlight(span, term))
+        highlighted_spans.extend(highlight_text_span(span, term))
     return highlighted_spans
 
 
-def _highlight_string(text, term) -> list:
+def replace_special_tags(page: ft.Page, ruling_text: str) -> list[ft.TextSpan]:
     spans = []
-    lower_text = text.lower()
-    lower_term = term.lower()
-    start = 0
-    while (index := lower_text.find(lower_term, start)) != -1:
-        if index > start:
-            spans.append(ft.TextSpan(text=text[start:index]))
-        spans.append(ft.TextSpan(
-            text=text[index:index + len(term)],
-            style=ft.TextStyle(weight=ft.FontWeight.BOLD, bgcolor=ft.colors.BLUE_50)
-        ))
-        start = index + len(term)
-    if start < len(text):
-        spans.append(ft.TextSpan(text=text[start:]))
-    return spans
+    remaining_text = ruling_text
 
-
-
-
-LINK_PATTERN = re.compile(r"\[(.+?)\]\((.+?)\)")
-
-import re
-import flet as ft
-from flet import Alignment
-
-TAG_PATTERN = re.compile('|'.join(re.escape(tag) for tag in TAG_TO_IMAGE))
-
-
-def replace_special_tags(page: ft.Page, text: str) -> list[ft.TextSpan]:
-    spans = []
-    remaining_text = text
-
-    while match := LINK_PATTERN.search(remaining_text) or TAG_PATTERN.search(remaining_text):
-        start, end = match.span()
+    while re_match := LINK_PATTERN.search(remaining_text) or TAG_PATTERN.search(remaining_text):
+        start, end = re_match.span()
         if start > 0:
             spans.append(ft.TextSpan(text=remaining_text[:start]))
-        if match.re.pattern == LINK_PATTERN.pattern:
-            link_text, link_url = match.groups()
-            card_id = link_url.split("/")[-1]
-            spans.append(ft.TextSpan(text=link_text, style=ft.TextStyle(decoration=ft.TextDecoration.UNDERLINE,
-                                                                        color=ft.colors.BLUE_ACCENT_400),
-                                     on_click=lambda event: on_card_click(event, page, card_id)))
-        else:
-            tag = match.group()
-            image_name = TAG_TO_IMAGE[tag]
-            spans.append(ft.TextSpan(text=image_name, style=ft.TextStyle(size=20, font_family="Arkham Icons")))
+
+        match re_match.re.pattern:
+            case LINK_PATTERN.pattern:
+                link_text, link_url = re_match.groups()
+                card_id = link_url.split("/")[-1]
+                spans.append(
+                    ft.TextSpan(
+                        text=link_text,
+                        style=ft.TextStyle(
+                            decoration=ft.TextDecoration.UNDERLINE,
+                            color=ft.colors.BLUE_ACCENT_400,
+                            bgcolor=ft.colors.DEEP_ORANGE_50,
+                        ),
+                        on_click=lambda event, card_code=card_id: on_card_click(event, page, card_code)
+                    )
+                )
+
+            case TAG_PATTERN.pattern:
+                tag = re_match.group()
+                tag_letter = TAG_TO_IMAGE[tag]
+                spans.append(
+                    ft.TextSpan(
+                        text=tag_letter,
+                        style=ft.TextStyle(
+                            size=20,
+                            font_family="Arkham Icons")
+                    )
+                )
+
+            case _:
+                logging.warning(f"Unsupported pattern: {re_match.re.pattern}")
+                spans.append(ft.TextSpan(text=re_match.group()))
+
         remaining_text = remaining_text[end:]
 
     if remaining_text:
@@ -196,7 +179,7 @@ def replace_special_tags(page: ft.Page, text: str) -> list[ft.TextSpan]:
     return spans
 
 
-def on_card_click(event, page: ft.Page, card_id):
+async def on_card_click(event, page: ft.Page, card_id):
     gql_query = gql(
         f"""
         query getCardImageURL {{
@@ -211,14 +194,13 @@ def on_card_click(event, page: ft.Page, card_id):
     print(gql_result)
     image_url = gql_result['all_card'][0]['imageurl']
 
-    def close_dialog():
+    async def close_dialog():
         dialog.open = False  # Close the Dialog
-        page.close_dialog()
-        asyncio.run(page.close_dialog_async())
+        await page.close_dialog_async()
         page.dialog = None
         # dialog.visible = False  # Hide the Dialog
 
-        page.update()
+        await page.update_async()
 
     image_card = ft.Image(src=image_url)
     # Close button to dismiss the Dialog
@@ -232,92 +214,131 @@ def on_card_click(event, page: ft.Page, card_id):
     # Function to add the Dialog to the page's overlay and update the page
     page.dialog = dialog
     page.dialog.open = True
-    page.update()
+    await page.update_async()
 
 
-def create_search_view(page: ft.Page, content: ft.Column, data: dict[str, list[dict]], search_term: str) -> None:
-    content_controls = []  # This will hold all the controls to be added to the content
-    text = []  # Initialize the text list to hold Text controls for each ruling
+class SearchView:
+    def __init__(self, page: ft.Page, data: dict[str, list[dict]]):
+        self.page = page
+        self.page_content: ft.Column = page.controls[0]
+        self.data = data
 
-    def create_text_spans(text_label: str, text_content: str, search_term: str) -> None:
+    def create_text_spans(self, ruling_type: EntryType, search_term: str, ruling_text: str = "",
+                          question_or_answer: QAType = None) -> ft.Text:
+        if ruling_type == EntryType.QUESTION_ANSWER:
+            if question_or_answer == QAType.QUESTION:
+                ruling_type_name = "Question"
+            elif question_or_answer == QAType.ANSWER:
+                ruling_type_name = "Answer"
+        else:
+            ruling_type_name = ruling_type.title()
+
         text_spans = [
-            ft.TextSpan(
-                text=text_label,
-                style=ft.TextStyle(weight=ft.FontWeight.BOLD),
-            )
+            ft.TextSpan(text=f"{ruling_type_name}: ", style=ft.TextStyle(weight=ft.FontWeight.BOLD))
         ]
-        text_content = replace_special_tags(page, text_content)  # Call replace_tags_with_images function here
-        for span in text_content:
+
+        # Replace link and icon tags with their respective controls
+        ruling_text_spans = replace_special_tags(self.page, ruling_text)
+
+        # Highlight the spans that match the search term
+        for span in ruling_text_spans:
             if isinstance(span, str):
-                text_spans.extend(highlight(span, search_term))
+                text_spans.extend(highlight_text_span(span, search_term))
             else:
-                text_spans.append(span)  # Add the span as is
-        text.append(ft.Text(disabled=False, selectable=True, spans=text_spans))
+                text_spans.append(highlight_text_span(span, search_term))  # Add the span as is
+        return ft.Text(disabled=False, selectable=True, spans=text_spans)
 
-    def add_subheader(card_name: str):
-        # Append a subheader to the content_controls list
-        content_controls.append(ft.Text(value=card_name, theme_style=ft.TextThemeStyle.HEADLINE_SMALL))
-        # Also, append any accumulated text controls to content_controls and reset text
-        content_controls.extend(text)
-        text.clear()
+    async def update_search_view(self, search_term: str) -> None:
+        content_controls = []  # This will hold all the controls to be added to the content
+        text = []  # Initialize the text list to hold Text controls for each ruling
 
-    for card_name, card_rulings in data.items():
-        has_matching_rulings = False
-        for ruling in card_rulings:
-            ruling_text = ruling.get('content', {}).get('text', '')
-            question = ruling.get('content', {}).get('question', '')
-            answer = ruling.get('content', {}).get('answer', '')
-            ruling_type = ruling.get('type', 'Unknown Type')
+        def add_subheader(card_name: str):
+            # Append a subheader to the content_controls list
+            content_controls.append(ft.Text(value=card_name, theme_style=ft.TextThemeStyle.HEADLINE_SMALL))
+            # Also, append any accumulated text controls to content_controls and reset text
+            content_controls.extend(text)
+            text.clear()
 
-            if search_term.lower() in ruling_text.lower() or search_term.lower() in question.lower() or search_term.lower() in answer.lower():
-                if ruling_type == EntryType.ERRATUM:
-                    create_text_spans("Erratum: ", ruling_text, search_term)
-                elif ruling_type == EntryType.CLARIFICATION:
-                    create_text_spans("Clarification: ", ruling_text, search_term)
-                elif ruling_type == EntryType.QUESTION_ANSWER:
-                    create_text_spans("Question: ", question, search_term)
-                    create_text_spans("Answer: ", answer, search_term)
-                has_matching_rulings = True
-        # If there are matching rulings, call add_subheader to handle adding the subheader and text controls
-        if has_matching_rulings:
-            add_subheader(card_name)
+        for card_name, card_rulings in self.data.items():
+            has_matching_rulings = False
+            for ruling in card_rulings:
+                ruling_content = ruling.get('content', {})
+                ruling_type = ruling.get('type', EntryType.UNKNOWN)
+                ruling_text = ruling_content.get('text', '')
+                ruling_question = ruling_content.get('question', '')
+                ruling_answer = ruling_content.get('answer', '')
 
-    # After processing all cards, if no content_controls were added, it means no results were found
-    if not content_controls:
-        content_controls.append(ft.Text("No results found."))
-        text.append(ft.Text("No results found."))
+                if search_term.lower() in " ".join([ruling_text, ruling_question, ruling_answer]).lower():
+                    if not " ".join([ruling_text, ruling_question, ruling_answer]).strip():
+                        continue
+                    match ruling_type:
+                        case EntryType.UNKNOWN:
+                            logging.warning(
+                                f"Unknown ruling type for card {card_name=}. Ruling type: {ruling_type=} Ruling text: {ruling_text, ruling_question, ruling_answer=} ")
+                            text.append(ft.Text(ruling_text))
+                        case EntryType.ERRATUM:
+                            text.append(self.create_text_spans(ruling_type, search_term, ruling_text))
+                        case EntryType.QUESTION_ANSWER:
+                            text.append(
+                                self.create_text_spans(ruling_type, search_term, ruling_question, QAType.QUESTION))
+                            text.append(self.create_text_spans(ruling_type, search_term, ruling_answer, QAType.ANSWER))
+                        case EntryType.CLARIFICATION:
+                            text.append(
+                                self.create_text_spans(ruling_type, search_term, ruling_text))
+                    has_matching_rulings = True
 
-    content.controls = content_controls
-    page.update()
+                # If there are matching rulings, call add_subheader to handle adding the subheader and text controls
+                if has_matching_rulings:
+                    add_subheader(card_name)
+
+        # After processing all cards, if no content_controls were added, it means no results were found
+        if not content_controls:
+            content_controls.append(ft.Text("No results found."))
+            text.append(ft.Text("No results found."))
+
+        self.page_content.controls += content_controls
+        await self.page.update_async()
 
 
-def search_input_changed(event: ft.ControlEvent, data: dict[str: list[dict]], content):
-    @debounce(1.0)
-    async def debounced_search(event: ft.ControlEvent, data: dict[str: list[dict]], content):
-        search_term = event.control.value
-        create_search_view(event.control.page, content, data, search_term)
+class SearchInputChanged:
+    def __init__(self, data: dict[str, list[dict]]):
+        self.data = data
 
-    asyncio.run(debounced_search(event, data, content))
+    async def search_input_changed(self, event: ft.ControlEvent):
+        @debounce(1.0)
+        async def debounced_search():
+            search_term = event.control.value
+            search_view = SearchView(event.control.page, self.data)
+            await search_view.update_search_view(search_term)
+
+        # Schedule the debounced_search coroutine to run on the event loop
+        await debounced_search()
 
 
-def main(page: ft.Page) -> None:
+async def main(page: ft.Page) -> None:
     page.fonts = {
         "Arkham Icons": "/fonts/arkham-icons.otf"
     }
-    content = ft.Column(expand=True, scroll=ft.ScrollMode.AUTO)
-    page.add(content)
+    page_content = ft.Ref[ft.Column]()
+
+    await page.add_async(ft.Column(ref=page_content, expand=True, scroll=ft.ScrollMode.AUTO))
 
     json_data = load_json_data()
 
+    search_input_handler = SearchInputChanged(json_data)
+    async def on_search_input_changed(event: ft.ControlEvent):
+        await search_input_handler.search_input_changed(event)
+
     search_input = ft.TextField(
         hint_text="Type to search...",
-        on_change=lambda event: search_input_changed(event, json_data, content),
+        on_change=lambda event: asyncio.create_task(search_input_handler.search_input_changed(event)),
         autofocus=True,
         autocorrect=False,
         icon="search",
     )
-    page.add(search_input)
+    await page.add_async(search_input)
+    await page.update_async()
 
 
 if __name__ == "__main__":
-    ft.app(target=main, assets_dir="assets")
+    ft.app(target=main, assets_dir="assets", name="FAQthis!")
