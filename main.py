@@ -259,7 +259,21 @@ class SearchView:
             logging.warning(
                 f"create_text_spans called with empty ruling_text for ruling_type: {ruling_type} and question_or_answer: {question_or_answer}")
             return ft.Text(disabled=False, selectable=True, spans=[])
-        ruling_text_control = replace_special_tags(self.page, ruling_text)
+        # If the ruling type is QUESTION_ANSWER and we are processing a question, we should not replace tags
+        if ruling_type == EntryType.QUESTION_ANSWER and question_or_answer == QAType.QUESTION:
+            # Directly highlight the search term in the question text
+            text_spans.extend(highlight_text_span(ruling_text, search_term))
+        else:
+            # For other types or for answers, replace special tags and then highlight
+            ruling_text_control = replace_special_tags(self.page, ruling_text)
+            # Highlight the spans that match the search term
+            if ruling_text_control.spans:
+                for span in ruling_text_control.spans:
+                    text_spans.extend(highlight_text_span(span, search_term))
+            else:
+                # If there are no spans, it means the ruling_text did not contain any special tags
+                # We should still highlight the search term in the ruling_text
+                text_spans.extend(highlight_text_span(ruling_text, search_term))
 
         # Highlight the spans that match the search term
         if ruling_text_control.spans:
