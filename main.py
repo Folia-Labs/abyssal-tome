@@ -276,6 +276,7 @@ class SearchView:
             text.clear()
 
         for card_name, card_rulings in self.data.items():
+            card_added = False
             for ruling in card_rulings:
                 ruling_content = ruling.get('content', {})
                 ruling_type = ruling.get('type', EntryType.UNKNOWN)
@@ -312,6 +313,10 @@ class SearchView:
                             self.create_text_spans(ruling_type, search_term, ruling_text))
 
                 add_subheader(card_name)
+
+                if not card_added:
+                    add_subheader(card_name)
+                    card_added = True
 
         # After processing all cards, if no content_controls were added, it means no results were found
         if not content_controls:
