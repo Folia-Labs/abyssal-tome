@@ -259,8 +259,8 @@ class SearchView:
         ruling_text_control_spans = replace_special_tags(self.page, ruling_text)
 
         # Highlight the spans that match the search term
-        for span in ruling_text_control_spans:
-            text_spans.extend(highlight_text_span(span, search_term))
+        highlighted_spans = highlight_text_span(ruling_text_control_spans, search_term)
+        text_spans.extend(highlighted_spans)
         return ft.Text(disabled=False, selectable=True, spans=text_spans)
 
     async def update_search_view(self, search_term: str) -> None:
