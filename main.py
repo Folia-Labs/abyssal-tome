@@ -134,7 +134,7 @@ def _(text: list, term: str) -> list[ft.TextSpan]:
     return highlighted_spans
 
 
-def replace_special_tags(page: ft.Page, ruling_text: str) -> ft.Text:
+def replace_special_tags(page: ft.Page, ruling_text: str) -> list[ft.TextSpan]:
     spans = []
     remaining_text = ruling_text
     if not remaining_text:
@@ -156,7 +156,7 @@ def replace_special_tags(page: ft.Page, ruling_text: str) -> ft.Text:
                     color=ft.colors.BLUE_ACCENT_400,
                     bgcolor=ft.colors.DEEP_ORANGE_50,
                 ),
-                on_click=lambda event, card_code=card_id: on_card_click(event, page, card_code)
+                on_click=lambda event, card_id=card_id: on_card_click(event, page, card_id)
             )
         )
         remaining_text = remaining_text[end:]
@@ -191,7 +191,7 @@ def replace_special_tags(page: ft.Page, ruling_text: str) -> ft.Text:
     if not spans:
         logging.error(f"No spans were created for ruling_text: {ruling_text}")
 
-    return ft.Text(spans=spans)
+    return spans
 
 
 async def on_card_click(event, page: ft.Page, card_id):
@@ -258,11 +258,11 @@ class SearchView:
         if not ruling_text:
             logging.warning(
                 f"create_text_spans called with empty ruling_text for ruling_type: {ruling_type} and question_or_answer: {question_or_answer}")
-            return ft.Text(disabled=False, selectable=True, spans=[])
+            return ft.Text(disabled=False, selectable=True, spans=text_spans)
         ruling_text_control = replace_special_tags(self.page, ruling_text)
 
         # Highlight the spans that match the search term
-        for span in ruling_text_control.spans:
+        for span in ruling_text_control_spans:
             text_spans.extend(highlight_text_span(span, search_term))
         return ft.Text(disabled=False, selectable=True, spans=text_spans)
 
