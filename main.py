@@ -137,6 +137,8 @@ def _(text: list, term: str) -> list[ft.TextSpan]:
 def replace_special_tags(page: ft.Page, ruling_text: str) -> ft.Text:
     spans = []
     remaining_text = ruling_text
+    if not remaining_text:
+        logging.warning("replace_special_tags called with empty ruling_text.")
 
     while re_match := LINK_PATTERN.search(remaining_text) or TAG_PATTERN.search(remaining_text):
         start, end = re_match.span()
@@ -181,6 +183,8 @@ def replace_special_tags(page: ft.Page, ruling_text: str) -> ft.Text:
 
         remaining_text = remaining_text[end:]
 
+    if not spans:
+        logging.error(f"No spans were created for ruling_text: {ruling_text}")
     if remaining_text:
         spans.append(ft.TextSpan(text=remaining_text, style=ft.TextStyle()))
 
@@ -201,6 +205,8 @@ async def on_card_click(event, page: ft.Page, card_id):
     # image_url = gql_result['data']['all_card'][0]['imageurl']
     print(gql_result)
     image_url = gql_result['all_card'][0]['imageurl']
+    if not image_url:
+        logging.error(f"No image URL found for card_id: {card_id}")
 
     async def close_dialog():
         dialog.open = False  # Close the Dialog
@@ -254,6 +260,8 @@ class SearchView:
 
     async def update_search_view(self, search_term: str) -> None:
         content_controls = []  # This will hold all the controls to be added to the content
+        if not search_term:
+            logging.warning("update_search_view called with empty search_term.")
         text = []  # Initialize the text list to hold Text controls for each ruling
 
         def add_subheader(card_name: str):
@@ -274,6 +282,7 @@ class SearchView:
 
                 if search_term.lower() in " ".join([ruling_text, ruling_question, ruling_answer]).lower():
                     if not " ".join([ruling_text, ruling_question, ruling_answer]).strip():
+                        logging.warning(f"Ruling content is empty for card: {card_name}")
                         continue
                     match ruling_type:
                         case EntryType.UNKNOWN:
@@ -297,6 +306,7 @@ class SearchView:
 
         # After processing all cards, if no content_controls were added, it means no results were found
         if not content_controls:
+            logging.info("No search results found for term: " + search_term)
             content_controls.append(ft.Text("No results found."))
             text.append(ft.Text("No results found."))
 
