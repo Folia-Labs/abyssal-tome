@@ -88,7 +88,7 @@ def _(text: str, term: str) -> list[ft.TextSpan]:
         if start > 0:
             spans.append(ft.TextSpan(
                 text=remaining_text[:start],
-                )
+            )
             )
 
         spans.append(ft.TextSpan(
@@ -140,53 +140,56 @@ def replace_special_tags(page: ft.Page, ruling_text: str) -> ft.Text:
     if not remaining_text:
         logging.warning("replace_special_tags called with empty ruling_text.")
 
-    while re_match := LINK_PATTERN.search(remaining_text) or TAG_PATTERN.search(remaining_text):
+    # First, handle the LINK_PATTERN
+    while re_match := LINK_PATTERN.search(remaining_text):
         start, end = re_match.span()
         if start > 0:
             spans.append(ft.TextSpan(text=remaining_text[:start], style=ft.TextStyle()))
 
-        match re_match.re.pattern:
-            case LINK_PATTERN.pattern:
-                link_text, link_url = re_match.groups()
-                card_id = link_url.split("/")[-1]
-                spans.append(
-                    ft.TextSpan(
-                        text=link_text,
-                        style=ft.TextStyle(
-                            decoration=ft.TextDecoration.UNDERLINE,
-                            color=ft.colors.BLUE_ACCENT_400,
-                            bgcolor=ft.colors.DEEP_ORANGE_50,
-                        ),
-                        on_click=lambda event, card_code=card_id: on_card_click(event, page, card_code)
-                    )
+        link_text, link_url = re_match.groups()
+        card_id = link_url.split("/")[-1]
+        spans.append(
+            ft.TextSpan(
+                text=link_text,
+                style=ft.TextStyle(
+                    decoration=ft.TextDecoration.UNDERLINE,
+                    color=ft.colors.BLUE_ACCENT_400,
+                    bgcolor=ft.colors.DEEP_ORANGE_50,
+                ),
+                on_click=lambda event, card_code=card_id: on_card_click(event, page, card_code)
+            )
+        )
+        remaining_text = remaining_text[end:]
+
+    # Then, handle the TAG_PATTERN
+    while re_match := TAG_PATTERN.search(remaining_text):
+        start, end = re_match.span()
+        if start > 0:
+            spans.append(ft.TextSpan(text=remaining_text[:start], style=ft.TextStyle()))
+
+        tag = re_match.group()
+        if tag not in TAG_TO_LETTER:
+            logging.warning(f"Unsupported tag: {tag}")
+            spans.append(ft.TextSpan(text=tag, style=ft.TextStyle()))
+        else:
+            tag_letter = TAG_TO_LETTER[tag]
+            spans.append(
+                ft.TextSpan(
+                    text=tag_letter,
+                    style=ft.TextStyle(
+                        size=20,
+                        font_family="Arkham Icons")
                 )
-
-            case TAG_PATTERN.pattern:
-                tag = re_match.group()
-                if tag in TAG_TO_LETTER:
-                    tag_letter = TAG_TO_LETTER[tag]
-                    spans.append(
-                        ft.TextSpan(
-                            text=tag_letter,
-                            style=ft.TextStyle(
-                                size=20,
-                                font_family="Arkham Icons")
-                        )
-                    )
-                else:
-                    logging.warning(f"Unsupported tag: {tag}")
-                    spans.append(ft.TextSpan(text=tag, style=ft.TextStyle()))
-
-            case _:
-                logging.warning(f"Unsupported pattern: {re_match.re.pattern}")
-                spans.append(ft.TextSpan(text=re_match.group(), style=ft.TextStyle()))
+            )
 
         remaining_text = remaining_text[end:]
 
-    if not spans:
-        logging.error(f"No spans were created for ruling_text: {ruling_text}")
     if remaining_text:
         spans.append(ft.TextSpan(text=remaining_text, style=ft.TextStyle()))
+
+
+    if not spans:
+        logging.error(f"No spans were created for ruling_text: {ruling_text}")
 
     return ft.Text(spans=spans)
 
@@ -237,7 +240,8 @@ class SearchView:
         self.page_content: ft.Column = page.controls[0]
         self.data = data
 
-    def create_text_spans(self, ruling_type: EntryType, search_term: str, ruling_text: str = "", question_or_answer: QAType = None) -> ft.Text:
+    def create_text_spans(self, ruling_type: EntryType, search_term: str, ruling_text: str = "",
+                          question_or_answer: QAType = None) -> ft.Text:
         if ruling_type == EntryType.QUESTION_ANSWER:
             if question_or_answer == QAType.QUESTION:
                 ruling_type_name = "Question"
@@ -251,6 +255,10 @@ class SearchView:
         ]
 
         # Replace link and icon tags with their respective controls
+        if not ruling_text:
+            logging.warning(
+                f"create_text_spans called with empty ruling_text for ruling_type: {ruling_type} and question_or_answer: {question_or_answer}")
+            return ft.Text(disabled=False, selectable=True, spans=[])
         ruling_text_control = replace_special_tags(self.page, ruling_text)
 
         # Highlight the spans that match the search term
@@ -272,7 +280,6 @@ class SearchView:
             text.clear()
 
         for card_name, card_rulings in self.data.items():
-            has_matching_rulings = False
             for ruling in card_rulings:
                 ruling_content = ruling.get('content', {})
                 ruling_type = ruling.get('type', EntryType.UNKNOWN)
@@ -280,29 +287,35 @@ class SearchView:
                 ruling_question = ruling_content.get('question', '')
                 ruling_answer = ruling_content.get('answer', '')
 
-                if search_term.lower() in " ".join([ruling_text, ruling_question, ruling_answer]).lower():
-                    if not " ".join([ruling_text, ruling_question, ruling_answer]).strip():
-                        logging.warning(f"Ruling content is empty for card: {card_name}")
-                        continue
-                    match ruling_type:
-                        case EntryType.UNKNOWN:
-                            logging.warning(
-                                f"Unknown ruling type for card {card_name=}. Ruling type: {ruling_type=} Ruling text: {ruling_text, ruling_question, ruling_answer=} ")
-                            text.append(ft.Text(ruling_text))
-                        case EntryType.ERRATUM:
-                            text.append(self.create_text_spans(ruling_type, search_term, ruling_text))
-                        case EntryType.QUESTION_ANSWER:
+                if ruling_type == EntryType.QUESTION_ANSWER and (not ruling_question or not ruling_answer):
+                    logging.warning(
+                        f"Question/Answer ruling is missing content for card: {card_name=} {ruling_question=} {ruling_answer=}")
+
+                if not any(re.search(search_term.lower(), text.lower()) for text in
+                           [ruling_text, ruling_question, ruling_answer]):
+                    continue
+
+                if not ruling_text.strip() and not ruling_question.strip() and not ruling_answer.strip():
+                    logging.warning(f"Ruling content is empty for card: {card_name}")
+                    continue
+                match ruling_type:
+                    case EntryType.UNKNOWN:
+                        logging.warning(
+                            f"Unknown ruling type for card {card_name=}. Ruling type: {ruling_type=} Ruling text: {ruling_text, ruling_question, ruling_answer=} ")
+                        text.append(ft.Text(ruling_text))
+                    case EntryType.ERRATUM:
+                        text.append(self.create_text_spans(ruling_type, search_term, ruling_text))
+                    case EntryType.QUESTION_ANSWER:
+                        if ruling_question:
                             text.append(
                                 self.create_text_spans(ruling_type, search_term, ruling_question, QAType.QUESTION))
+                        if ruling_answer:
                             text.append(self.create_text_spans(ruling_type, search_term, ruling_answer, QAType.ANSWER))
-                        case EntryType.CLARIFICATION:
-                            text.append(
-                                self.create_text_spans(ruling_type, search_term, ruling_text))
-                    has_matching_rulings = True
+                    case EntryType.CLARIFICATION:
+                        text.append(
+                            self.create_text_spans(ruling_type, search_term, ruling_text))
 
-                # If there are matching rulings, call add_subheader to handle adding the subheader and text controls
-                if has_matching_rulings:
-                    add_subheader(card_name)
+                add_subheader(card_name)
 
         # After processing all cards, if no content_controls were added, it means no results were found
         if not content_controls:
@@ -324,7 +337,8 @@ class SearchInputChanged:
         async def debounced_search():
             search_term = event.control.value
             search_view = SearchView(event.control.page, self.data)
-            await search_view.update_search_view(search_term)
+            if search_term:
+                await search_view.update_search_view(search_term)
 
         # Schedule the debounced_search coroutine to run on the event loop
         await debounced_search()
@@ -341,6 +355,7 @@ async def main(page: ft.Page) -> None:
     json_data = load_json_data()
 
     search_input_handler = SearchInputChanged(json_data)
+
     async def on_search_input_changed(event: ft.ControlEvent):
         await search_input_handler.search_input_changed(event)
 
