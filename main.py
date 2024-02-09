@@ -130,14 +130,14 @@ def _(text: list, term: str) -> list[ft.TextSpan]:
     return highlighted_spans
 
 
-def replace_special_tags(page: ft.Page, ruling_text: str) -> list[ft.TextSpan]:
+def replace_special_tags(page: ft.Page, ruling_text: str) -> ft.Text:
     spans = []
     remaining_text = ruling_text
 
     while re_match := LINK_PATTERN.search(remaining_text) or TAG_PATTERN.search(remaining_text):
         start, end = re_match.span()
         if start > 0:
-            spans.append(ft.TextSpan(text=remaining_text[:start]))
+            spans.append(ft.TextSpan(text=remaining_text[:start], style=ft.TextStyle()))
 
         match re_match.re.pattern:
             case LINK_PATTERN.pattern:
@@ -169,14 +169,14 @@ def replace_special_tags(page: ft.Page, ruling_text: str) -> list[ft.TextSpan]:
 
             case _:
                 logging.warning(f"Unsupported pattern: {re_match.re.pattern}")
-                spans.append(ft.TextSpan(text=re_match.group()))
+                spans.append(ft.TextSpan(text=re_match.group(), style=ft.TextStyle()))
 
         remaining_text = remaining_text[end:]
 
     if remaining_text:
-        spans.append(ft.TextSpan(text=remaining_text))
+        spans.append(ft.TextSpan(text=remaining_text, style=ft.TextStyle()))
 
-    return spans
+    return ft.Text(spans=spans)
 
 
 async def on_card_click(event, page: ft.Page, card_id):
@@ -223,7 +223,7 @@ class SearchView:
         self.page_content: ft.Column = page.controls[0]
         self.data = data
 
-    def create_text_spans(self, ruling_type: EntryType, search_term: str, ruling_text: str = "",
+    def create_text_spans(self, ruling_type: EntryType, search_term: str, ruling_text: str = "") -> ft.Text:
                           question_or_answer: QAType = None) -> ft.Text:
         if ruling_type == EntryType.QUESTION_ANSWER:
             if question_or_answer == QAType.QUESTION:
@@ -238,14 +238,14 @@ class SearchView:
         ]
 
         # Replace link and icon tags with their respective controls
-        ruling_text_spans = replace_special_tags(self.page, ruling_text)
+        ruling_text_control = replace_special_tags(self.page, ruling_text)
 
         # Highlight the spans that match the search term
-        for span in ruling_text_spans:
+        for span in ruling_text_control.spans:
             if isinstance(span, str):
                 text_spans.extend(highlight_text_span(span, search_term))
             else:
-                text_spans.append(highlight_text_span(span, search_term))  # Add the span as is
+                text_spans.extend(highlight_text_span(span, search_term))  # Add the span as is
         return ft.Text(disabled=False, selectable=True, spans=text_spans)
 
     async def update_search_view(self, search_term: str) -> None:
