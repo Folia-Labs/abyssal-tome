@@ -223,8 +223,7 @@ class SearchView:
         self.page_content: ft.Column = page.controls[0]
         self.data = data
 
-    def create_text_spans(self, ruling_type: EntryType, search_term: str, ruling_text: str = "") -> ft.Text:
-                          question_or_answer: QAType = None) -> ft.Text:
+    def create_text_spans(self, ruling_type: EntryType, search_term: str, ruling_text: str = "", question_or_answer: QAType = None) -> ft.Text:
         if ruling_type == EntryType.QUESTION_ANSWER:
             if question_or_answer == QAType.QUESTION:
                 ruling_type_name = "Question"
