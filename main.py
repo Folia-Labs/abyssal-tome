@@ -154,11 +154,12 @@ def replace_special_tags(page: ft.Page, ruling_text: str) -> list[ft.TextSpan]:
     if not ruling_text:
         logging.warning("replace_special_tags called with empty ruling_text.")
         return spans
-    def handle_link(spans, re_match):
+
+    def handle_link(t_spans, re_match):
         link_text, link_url = re_match.groups()
         card_code = link_url.split("/")[-1]
         append_span(
-            spans,
+            t_spans,
             link_text,
             ft.TextStyle(
                 decoration=ft.TextDecoration.UNDERLINE,
@@ -168,7 +169,7 @@ def replace_special_tags(page: ft.Page, ruling_text: str) -> list[ft.TextSpan]:
             lambda event, card_id=card_code: on_card_click(event, page, card_id)
         )
 
-    def handle_tag(spans, re_match):
+    def handle_tag(t_spans, re_match):
         tag = re_match.group()
         if tag not in TAG_TO_LETTER:
             logging.warning(f"Unsupported tag: {tag}")
@@ -176,7 +177,7 @@ def replace_special_tags(page: ft.Page, ruling_text: str) -> list[ft.TextSpan]:
         else:
             tag_letter = TAG_TO_LETTER[tag]
             append_span(
-                spans,
+                t_spans,
                 tag_letter,
                 ft.TextStyle(size=20, font_family="Arkham Icons")
             )
