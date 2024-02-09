@@ -74,8 +74,10 @@ gql_client = Client(transport=transport, fetch_schema_from_transport=True)
 
 
 def load_json_data() -> dict:
+    logging.info("Loading JSON data from file.")
     with open(Path('assets/processed_data.json'), 'r', encoding='utf-8') as file:
         data = json.load(file)
+    logging.info("JSON data loaded successfully.")
     return data
 
 
@@ -177,6 +179,7 @@ def handle_match(spans, pattern, text, handler) -> str:
 
 
 async def replace_special_tags(page: ft.Page, ruling_text: str) -> list[ft.TextSpan]:
+    logging.info("Replacing special tags in ruling text.")
     spans = []
     if not ruling_text:
         logging.warning("replace_special_tags called with empty ruling_text.")
@@ -211,6 +214,7 @@ async def replace_special_tags(page: ft.Page, ruling_text: str) -> list[ft.TextS
 
 
 async def on_card_click(event, page: ft.Page, card_id):
+    logging.info(f"Card clicked with ID: {card_id}")
     gql_query = gql(
         f"""
         query getCardImageURL {{
@@ -252,6 +256,7 @@ async def on_card_click(event, page: ft.Page, card_id):
 
 class SearchView:
     def __init__(self, page: ft.Page, data: dict[str, list[dict]]):
+        logging.info("Initializing SearchView.")
         self.page = page
         self.page_content: ft.Column = page.controls[0]
         self.data = data
@@ -286,6 +291,7 @@ class SearchView:
         return text_spans
 
     async def update_search_view(self, search_term: str) -> None:
+        logging.info(f"Updating search view with term: {search_term}")
         content_controls = []  # This will hold all the controls to be added to the content
         if not search_term:
             logging.warning("update_search_view called with empty search_term.")
@@ -353,6 +359,7 @@ class SearchView:
 
 class SearchInputChanged:
     def __init__(self, data: dict[str, list[dict]]):
+        logging.info("Initializing SearchInputChanged.")
         self.data = data
 
     async def search_input_changed(self, event: ft.ControlEvent):
@@ -368,6 +375,7 @@ class SearchInputChanged:
 
 
 async def main(page: ft.Page) -> None:
+    logging.info("Main function started.")
     page.fonts = {
         "Arkham Icons": "/fonts/arkham-icons.otf"
     }
@@ -391,6 +399,7 @@ async def main(page: ft.Page) -> None:
 
 
 if __name__ == "__main__":
+    logging.info("Starting app.")
     print("Starting app")
     flet_path = os.getenv("FLET_PATH", DEFAULT_FLET_PATH)
     flet_port = int(os.getenv("FLET_PORT", DEFAULT_FLET_PORT))
