@@ -138,7 +138,7 @@ def load_json_data() -> dict:
     return data
 
 
-async def highlight_text(span: ft.TextSpan, term: str) -> list[ft.TextSpan]:
+async def highlight_text(span: ft.TextSpan, search_term: str) -> list[ft.TextSpan]:
     term_pattern = reg.escape(term, special_only=True, literal_spaces=True)
     for tag in TAG_TO_LETTER.keys():
         if term.lower() in tag and span.style and span.style.font_family == "Arkham Icons" and span.text == \
@@ -187,11 +187,11 @@ async def highlight_text(span: ft.TextSpan, term: str) -> list[ft.TextSpan]:
     return spans
 
 
-async def highlight_spans(text_spans: list[ft.TextSpan], term: str) -> list[ft.TextSpan]:
+async def highlight_spans(text_spans: list[ft.TextSpan], search_term: str) -> list[ft.TextSpan]:
     # logging.warning(f"highlight_text_span called with term: {term} and {len(text_spans)} spans.")
     highlighted_spans = []
     for span in text_spans:
-        highlighted_spans.extend(await highlight_text(span, term))
+        highlighted_spans.extend(await highlight_text(span, search_term))
     return highlighted_spans
 
 
@@ -202,14 +202,14 @@ def append_span(spans, text, style=None, on_click=None):
         )
 
 
-async def replace_special_tags(page: ft.Page, ruling_text: str) -> list[ft.TextSpan]:
+async def replace_special_tags(page: ft.Page, text: str) -> list[ft.TextSpan]:
     logging.info("Replacing special tags in ruling text.")
     spans = []
-    if not ruling_text:
+    if not text:
         # logging.warning("replace_special_tags called with empty ruling_text.")
         return spans
 
-    remaining_text = ruling_text
+    remaining_text = text
 
     while match := ALL_PATTERN.search(remaining_text):
         start, end = match.span()
@@ -273,7 +273,7 @@ async def replace_special_tags(page: ft.Page, ruling_text: str) -> list[ft.TextS
     return spans
 
 
-async def on_card_click(event, page: ft.Page, card_id):
+async def on_card_click(event: ft.ControlEvent, page: ft.Page, card_id: str):
     logging.info(f"Card clicked with ID: {card_id}")
     image_url = await retrieve_image_url(card_id)
 
@@ -313,7 +313,7 @@ async def on_card_click(event, page: ft.Page, card_id):
     await page.dialog.update_async()
 
 
-async def retrieve_image_binary(image_url):
+async def retrieve_image_binary(image_url: str) -> str:
     # Check that image_url is retrievable and is a valid image using requests and Pillow
     # If not, display an error message instead of the image
     # If it is, display the image in an AlertDialog
@@ -325,7 +325,7 @@ async def retrieve_image_binary(image_url):
     return b64encode(image.content).decode("ascii")
 
 
-async def retrieve_image_url(card_id):
+async def retrieve_image_url(card_id: str) -> str:
     gql_query = gql(
         f"""
         query getCardImageURL {{
@@ -344,7 +344,7 @@ async def retrieve_image_url(card_id):
     return image_url
 
 
-async def retrieve_card_text(card_id: str):
+async def retrieve_card_text(card_id: str) -> dict:
     gql_query = gql(
         f"""
         query getCardText {{
@@ -370,23 +370,23 @@ async def retrieve_card_text(card_id: str):
     return results
 
 
-async def copy_ruling_to_clipboard(e: ft.ControlEvent, ruling_text: str, clip: ft.ElevatedButton):
+async def copy_ruling_to_clipboard(event: ft.ControlEvent, text: str, button: ft.ElevatedButton):
     logging.info("Copying ruling to clipboard.")
     clipman.copy(ruling_text)
     clip.style.shadow = ft.BoxShadow(spread_radius=-1, blur_radius=10, color=ft.colors.BLACK, offset=ft.Offset(2, 2),
                                      blur_style=ft.ShadowBlurStyle.NORMAL)
-    await clip.update_async()
+    await button.update_async()
     await asyncio.sleep(0.3)
     clip.style.shadow = None
-    await clip.update_async()
+    await button.update_async()
 
 
-async def go_to_card_page(e, page, card_code, card_name):
+async def go_to_card_page(event: ft.ControlEvent, page: ft.Page, card_code: str, card_name: str):
     await page.go_async(f"/card/{urlsafe_b64encode(card_name.encode('ascii')).decode('ascii')}/{card_code}")
     await page.update_async()
 
 
-class SearchView:
+class SearchController:
     def __init__(self, page: ft.Page, data: dict[str, list[dict]]):
         logging.info("Initializing SearchView.")
         self.page = page
@@ -676,7 +676,7 @@ class SearchView:
         return text
 
 
-class SearchInputChanged:
+class SearchInputController:
     def __init__(self, page: ft.Page, data: dict[str, list[dict]]):
         logging.info("Initializing SearchInputChanged.")
         self.data = data
@@ -688,7 +688,7 @@ class SearchInputChanged:
             search_view = SearchView(self.page, self.data)
             await search_view.update_search_view(search_term)
 
-async def main(page: ft.Page) -> None:
+async def main(page: ft.Page):
     print("Main function started.")
     page.title = "FAQ This!"
     page.fonts = {"Arkham Icons": "/fonts/arkham-icons.otf"}
@@ -743,6 +743,8 @@ async def main(page: ft.Page) -> None:
                 card_id = ruling.get("card_code", "")
                 writer.add_document(card_name=card_name, ruling_text=ruling_text, card_code=card_id, ruling_type=ruling_type, ruling_question=ruling_question, ruling_answer=ruling_answer)
 
+    search_input_handler = SearchInputController(page, json_data)
+
     search_input_handler = SearchInputChanged(page, json_data)
 
     search_input = ft.TextField(
@@ -783,6 +785,7 @@ async def main(page: ft.Page) -> None:
             print(f"{card_text=}")
 
             search_view = SearchView(page, load_json_data())
+            search_view = SearchController(page, load_json_data())
             rulings = await search_view.get_rulings_for_card(page, card_name, card_code, image_binary, card_text)
             print(f"{rulings=}")
 
