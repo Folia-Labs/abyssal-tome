@@ -1,7 +1,18 @@
 import pytest
+from hypothesis import given, strategies as st
+from hypothesis.extra.pydantic import from_type
 from bs4 import BeautifulSoup
 from scripts.process_new_format import process_ruling_html, RulingType, Ruling
 
+@given(from_type(Ruling))
+def test_ruling_model_properties(ruling: Ruling):
+    # Verify that the ruling instance adheres to the properties defined in the Ruling model
+    assert isinstance(ruling.ruling_type, RulingType)
+    assert isinstance(ruling.content, list)
+    for item in ruling.content:
+        assert isinstance(item, (bs4.Tag, str))
+
+# Existing tests...
 def test_process_ruling_html_empty_input():
     empty_soup = BeautifulSoup("", 'html.parser')
     result = process_ruling_html(empty_soup)
