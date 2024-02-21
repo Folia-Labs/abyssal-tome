@@ -179,8 +179,8 @@ def process_ruling_html(ruling: BeautifulSoup) -> list[str]:
                 if isinstance(nxt, bs4.Tag):
                     if nxt.name == "strong":
                         break
-                    between.append(nxt.get_text())
                     between.append(nxt)
+                    between.append(nxt.get_text(strip=True))
                 elif isinstance(nxt, bs4.NavigableString):
                     between.append(str(nxt))
             ruling_text = ' '.join(between).strip()
