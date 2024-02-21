@@ -199,11 +199,11 @@ def process_ruling_html(ruling: BeautifulSoup) -> List[Ruling]:
         if stripped_strong in TEXT_TO_RULING_TYPE:
             between = []
             for nxt in strong.find_next_siblings():
-                if isinstance(nxt, bs4.Tag):
-                    if nxt.name == "strong":
+            for nxt in strong.next_siblings:
+                if isinstance(nxt, (bs4.Tag, bs4.NavigableString)):
+                    if isinstance(nxt, bs4.Tag) and nxt.name == "strong":
                         break
-                    between.append(nxt)
-                elif isinstance(nxt, bs4.NavigableString):
+                    between.append(str(nxt).strip())
                     between.append(str(nxt))
             ruling_type = TEXT_TO_RULING_TYPE[stripped_strong]
             if rulings and rulings[-1].ruling_type in (RulingType.QUESTION, RulingType.ANSWER) and ruling_type in (
