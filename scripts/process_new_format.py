@@ -4,6 +4,7 @@ from pathlib import Path
 from pprint import pp
 from typing import List
 from pydantic import BaseModel
+from typing import Optional
 from enum import Enum, auto
 from bs4 import BeautifulSoup, Tag
 import markdown_it as md_it
@@ -14,27 +15,6 @@ from bs4 import BeautifulSoup
 from symbol import postProcess, tokenize
 
 
-class RulingType(Enum):
-    ERRATA = auto()
-    ADDENDUM = auto()
-    QUESTION = auto()
-    ANSWER = auto()
-    CLARIFICATION = auto()
-    NOTE = auto()
-    FOLLOWUP_Q = auto()
-    UPDATE = auto()
-    AS_IF = auto()
-    AUTOMATIC_SUCCESS_FAILURE = auto()
-    AUTOMATIC_SUCCESS_FAILURE_AUTOMATIC_EVASION = auto()
-
-
-class Ruling(BaseModel):
-    class Config:
-        arbitrary_types_allowed = True
-    ruling_type: RulingType
-    question: Optional[str] = None
-    answer: Optional[str] = None
-    content: Optional[List[str]] = None
 
 
 logging.basicConfig(level=logging.INFO)
@@ -67,18 +47,21 @@ TAG_TO_LETTER = {
 }
 
 
-class RulingType(Enum):
-    ERRATA = auto()
-    ADDENDUM = auto()
-    QUESTION = auto()
-    ANSWER = auto()
-    CLARIFICATION = auto()
-    NOTE = auto()
-    FOLLOWUP_Q = auto()
-    UPDATE = auto()
-    AS_IF = auto()
-    AUTOMATIC_SUCCESS_FAILURE = auto()
-    AUTOMATIC_SUCCESS_FAILURE_AUTOMATIC_EVASION = auto()
+class Ruling(BaseModel):
+    class Config:
+        arbitrary_types_allowed = True
+    ruling_type: RulingType
+    question: Optional[str] = None
+    answer: Optional[str] = None
+    content: Optional[List[str]] = None
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        if self.ruling_type in [RulingType.QUESTION, RulingType.ANSWER] and not self.content:
+            self.content = [self.question, self.answer]
+}
+
+
 
 
 TEXT_TO_RULING_TYPE = {
