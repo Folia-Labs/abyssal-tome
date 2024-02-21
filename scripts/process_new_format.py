@@ -28,6 +28,8 @@ class RulingType(Enum):
 
 
 class Ruling(BaseModel):
+    class Config:
+        arbitrary_types_allowed = True
     ruling_type: RulingType
     content: list[bs4.Tag]
 
