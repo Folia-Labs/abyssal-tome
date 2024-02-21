@@ -72,7 +72,6 @@ class Ruling(BaseModel):
         super().__init__(**data)
         if self.ruling_type in [RulingType.QUESTION, RulingType.ANSWER] and not self.content:
             self.content = [self.question, self.answer]
-}
 
 
 
