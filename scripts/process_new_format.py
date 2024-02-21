@@ -2,6 +2,12 @@ import json
 import logging
 from pathlib import Path
 from pprint import pp
+from typing import List
+from pydantic import BaseModel
+
+class Ruling(BaseModel):
+    ruling_type: RulingType
+    content: List[bs4.Tag]
 
 import bs4
 import markdown_it as md_it
@@ -169,8 +175,8 @@ def process_markdown_faq_data(markdown_faq_data: dict[str, str]) -> None:
         print(f"\n{'=' * 80}\n\n")
 
 
-def process_ruling_html(ruling: BeautifulSoup) -> list[str]:
-    ruling_sections = []
+def process_ruling_html(ruling: BeautifulSoup) -> List[Ruling]:
+    rulings = []
     for strong in ruling.find_all("strong"):
         stripped_strong = strong.get_text(strip=True).strip(":").lower()
         if stripped_strong in TEXT_TO_RULING_TYPE:
@@ -180,13 +186,14 @@ def process_ruling_html(ruling: BeautifulSoup) -> list[str]:
                     if nxt.name == "strong":
                         break
                     between.append(nxt)
-                    between.append(nxt.get_text(strip=True))
                 elif isinstance(nxt, bs4.NavigableString):
                     between.append(str(nxt))
-            ruling_text = ' '.join(between).strip()
-            print(f"Ruling type: {stripped_strong}, Text: {ruling_text}")
-            ruling_sections.append(ruling_text)
-    return ruling_sections
+            ruling_type = TEXT_TO_RULING_TYPE[stripped_strong]
+            if rulings and rulings[-1].ruling_type in (RulingType.QUESTION, RulingType.ANSWER) and ruling_type in (RulingType.QUESTION, RulingType.ANSWER):
+                rulings[-1].content.extend(between)
+            else:
+                rulings.append(Ruling(ruling_type=ruling_type, content=between))
+    return rulings
 
 
 def process_html_faq_data(
