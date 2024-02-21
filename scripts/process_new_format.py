@@ -14,9 +14,6 @@ from bs4 import BeautifulSoup
 
 from symbol import postProcess, tokenize
 
-
-
-
 logging.basicConfig(level=logging.INFO)
 
 FAQS_PATH = Path(r"../faqs/faqs.json")
@@ -60,9 +57,11 @@ class RulingType(Enum):
     AUTOMATIC_SUCCESS_FAILURE = auto()
     AUTOMATIC_SUCCESS_FAILURE_AUTOMATIC_EVASION = auto()
 
+
 class Ruling(BaseModel):
     class Config:
         arbitrary_types_allowed = True
+
     ruling_type: RulingType
     question: Optional[str] = None
     answer: Optional[str] = None
@@ -72,8 +71,6 @@ class Ruling(BaseModel):
         super().__init__(**data)
         if self.ruling_type in [RulingType.QUESTION, RulingType.ANSWER] and not self.content:
             self.content = [self.question, self.answer]
-
-
 
 
 TEXT_TO_RULING_TYPE = {
@@ -104,22 +101,6 @@ RULING_STRIP_PATTERNS = [
 ]
 
 
-# def ahlcg_symbol_plugin(md: md_it.MarkdownIt) -> None:
-#     def inline_custom_tokenizer(state):
-#         tokens = state.tokens
-#         i = 0
-#         while i < len(tokens) - 2:
-#             # Assuming the token type that encloses symbols is 'text'
-#             if (tokens[i].type == 'text' and tokens[i].content == '[' and
-#                     tokens[i + 1].type == 'text' and
-#                     tokens[i + 2].type == 'text' and tokens[i + 2].content == ']'):
-#                 symbol = tokens[i + 1].content
-#                 if symbol in TAG_TO_LETTER:
-#                     # Create a new token for the symbol
-#                     symbol_token = state.push("symbol", "", 0)
-#                     new_token = state.push('text', '', 0)
-
-
 def load_faqs(faqs_path: Path) -> dict[str, dict[str, str]]:
     if not faqs_path.exists():
         raise FileNotFoundError(f"File {faqs_path} does not exist.")
@@ -143,14 +124,15 @@ def convert_html_to_markdown(faq_data: dict[str, dict[str, str]]) -> dict[str, s
 
 def convert_json_to_html(faq_data: dict[str, dict[str, str]]) -> dict[str, BeautifulSoup]:
     return {
-        card_code: BeautifulSoup(card_data["text"], features="html.parser") for card_code, card_data in faq_data.items()
+        card_code: BeautifulSoup(card_data["text"], features="html.parser")
+        for card_code, card_data in faq_data.items()
     }
 
 
-def print_token_stream(tokens: list[md_it.token.Token], nest_level: int = 0) -> None:
+def print_token_stream(tokens: List[md_it.token.Token], nest_level: int = 0) -> None:
     for token in tokens:
         for i in range(nest_level):
-            print(f"{' ' * 2 * i}‾‾‾|")
+            print(f"{' ' * 2 * i}â¾â¾â¾|")
         if not token.children:
             tok = token.as_dict(
                 children=True, filter=lambda k, v: k in ("type", "tag", "markup", "content")
@@ -196,7 +178,7 @@ def process_ruling_html(ruling: BeautifulSoup) -> List[Ruling]:
         if stripped_strong in TEXT_TO_RULING_TYPE:
             between = []
             for nxt in strong.next_siblings:
-                if isinstance(nxt, bs4.Tag | bs4.NavigableString):
+                if isinstance(nxt, bs4.Tag) or isinstance(nxt, bs4.NavigableString):
                     if isinstance(nxt, bs4.Tag) and nxt.name == "strong":
                         break
                     content_str = str(nxt).strip()
@@ -210,9 +192,7 @@ def process_ruling_html(ruling: BeautifulSoup) -> List[Ruling]:
     return rulings
 
 
-def process_html_faq_data(
-        html_faq_data: dict[str, BeautifulSoup],
-) -> dict[str, list[BeautifulSoup]]:
+def process_html_faq_data(html_faq_data: dict[str, BeautifulSoup]) -> dict[str, List[BeautifulSoup]]:
     processed_data = {}
 
     for card_code, rulings_html in html_faq_data.items():
