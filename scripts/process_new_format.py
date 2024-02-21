@@ -179,13 +179,14 @@ def process_ruling_html(ruling: BeautifulSoup) -> list[str]:
                 if isinstance(nxt, bs4.Tag):
                     if nxt.name == "strong":
                         break
-                    between.append(nxt.get_text())
+                    between.append(nxt)
                 elif isinstance(nxt, bs4.NavigableString):
                     between.append(str(nxt))
-            ruling_text = ' '.join(between).strip()
-            if ruling_text:
-                print(f"Ruling type: {stripped_strong}, Text: {ruling_text}")
-                ruling_sections.append(ruling_text)
+                else:
+                    raise ValueError(f"Unexpected type {type(nxt)}")
+            ruling_text = "".join(str(content) if isinstance(content, str) else content.get_text() for content in between)
+            print(f"Ruling type: {stripped_strong}, Text: {ruling_text}")
+            ruling_sections.append(ruling_text)
     return ruling_sections
 
 
