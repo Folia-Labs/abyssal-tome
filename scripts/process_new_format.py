@@ -32,7 +32,9 @@ class Ruling(BaseModel):
     class Config:
         arbitrary_types_allowed = True
     ruling_type: RulingType
-    content: list[Tag | str]
+    question: Optional[str] = None
+    answer: Optional[str] = None
+    content: Optional[List[str]] = None
 
 
 logging.basicConfig(level=logging.INFO)
