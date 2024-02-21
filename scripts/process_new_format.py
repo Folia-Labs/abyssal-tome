@@ -4,17 +4,33 @@ from pathlib import Path
 from pprint import pp
 from typing import List
 from pydantic import BaseModel
-
-class Ruling(BaseModel):
-    ruling_type: RulingType
-    content: List[bs4.Tag]
-
+from enum import Enum, auto
 import bs4
 import markdown_it as md_it
 import markdownify
 from bs4 import BeautifulSoup
 
 from symbol import postProcess, tokenize
+
+
+class RulingType(Enum):
+    ERRATA = auto()
+    ADDENDUM = auto()
+    QUESTION = auto()
+    ANSWER = auto()
+    CLARIFICATION = auto()
+    NOTE = auto()
+    FOLLOWUP_Q = auto()
+    UPDATE = auto()
+    AS_IF = auto()
+    AUTOMATIC_SUCCESS_FAILURE = auto()
+    AUTOMATIC_SUCCESS_FAILURE_AUTOMATIC_EVASION = auto()
+
+
+class Ruling(BaseModel):
+    ruling_type: RulingType
+    content: list[bs4.Tag]
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -44,8 +60,6 @@ TAG_TO_LETTER = {
     "free": "j",
     "action": "i",
 }
-
-from enum import Enum, auto
 
 
 class RulingType(Enum):
@@ -189,7 +203,8 @@ def process_ruling_html(ruling: BeautifulSoup) -> List[Ruling]:
                 elif isinstance(nxt, bs4.NavigableString):
                     between.append(str(nxt))
             ruling_type = TEXT_TO_RULING_TYPE[stripped_strong]
-            if rulings and rulings[-1].ruling_type in (RulingType.QUESTION, RulingType.ANSWER) and ruling_type in (RulingType.QUESTION, RulingType.ANSWER):
+            if rulings and rulings[-1].ruling_type in (RulingType.QUESTION, RulingType.ANSWER) and ruling_type in (
+            RulingType.QUESTION, RulingType.ANSWER):
                 rulings[-1].content.extend(between)
             else:
                 rulings.append(Ruling(ruling_type=ruling_type, content=between))
@@ -197,7 +212,7 @@ def process_ruling_html(ruling: BeautifulSoup) -> List[Ruling]:
 
 
 def process_html_faq_data(
-    html_faq_data: dict[str, BeautifulSoup],
+        html_faq_data: dict[str, BeautifulSoup],
 ) -> dict[str, list[BeautifulSoup]]:
     processed_data = {}
 
