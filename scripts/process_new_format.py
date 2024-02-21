@@ -202,10 +202,11 @@ def process_ruling_html(ruling: BeautifulSoup) -> List[Ruling]:
                 if isinstance(nxt, bs4.Tag | bs4.NavigableString):
                     if isinstance(nxt, bs4.Tag) and nxt.name == "strong":
                         break
-                    between.append(str(nxt).strip())
+                    content_str = str(nxt).strip()
+                    if content_str:  # Only add non-empty strings
+                        between.append(content_str)
                     ruling_type = TEXT_TO_RULING_TYPE[stripped_strong]
-            if rulings and rulings[-1].ruling_type in (RulingType.QUESTION, RulingType.ANSWER) and ruling_type in (
-            RulingType.QUESTION, RulingType.ANSWER):
+            if rulings and rulings[-1].ruling_type == RulingType.QUESTION and ruling_type == RulingType.ANSWER:
                 rulings[-1].content.extend(between)
             else:
                 rulings.append(Ruling(ruling_type=ruling_type.value, content=between))
