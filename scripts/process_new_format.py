@@ -47,6 +47,19 @@ TAG_TO_LETTER = {
 }
 
 
+class RulingType(Enum):
+    ERRATA = auto()
+    ADDENDUM = auto()
+    QUESTION = auto()
+    ANSWER = auto()
+    CLARIFICATION = auto()
+    NOTE = auto()
+    FOLLOWUP_Q = auto()
+    UPDATE = auto()
+    AS_IF = auto()
+    AUTOMATIC_SUCCESS_FAILURE = auto()
+    AUTOMATIC_SUCCESS_FAILURE_AUTOMATIC_EVASION = auto()
+
 class Ruling(BaseModel):
     class Config:
         arbitrary_types_allowed = True
