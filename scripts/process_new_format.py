@@ -63,9 +63,9 @@ class Ruling(BaseModel):
         arbitrary_types_allowed = True
 
     ruling_type: RulingType
-    question: Optional[str] = None
-    answer: Optional[str] = None
-    content: Optional[List[str]] = None
+    question: str | None = None
+    answer: str | None = None
+    content: list[str] | None = None
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -129,7 +129,7 @@ def convert_json_to_html(faq_data: dict[str, dict[str, str]]) -> dict[str, Beaut
     }
 
 
-def print_token_stream(tokens: List[md_it.token.Token], nest_level: int = 0) -> None:
+def print_token_stream(tokens: list[md_it.token.Token], nest_level: int = 0) -> None:
     for token in tokens:
         for i in range(nest_level):
             print(f"{' ' * 2 * i}â¾â¾â¾|")
@@ -171,7 +171,7 @@ def process_markdown_faq_data(markdown_faq_data: dict[str, str]) -> None:
         print(f"\n{'=' * 80}\n\n")
 
 
-def process_ruling_html(ruling: BeautifulSoup) -> List[Ruling]:
+def process_ruling_html(ruling: BeautifulSoup) -> list[Ruling]:
     rulings = []
     for strong in ruling.find_all("strong"):
         stripped_strong = strong.get_text(strip=True).strip(":").lower()
@@ -192,7 +192,7 @@ def process_ruling_html(ruling: BeautifulSoup) -> List[Ruling]:
     return rulings
 
 
-def process_html_faq_data(html_faq_data: dict[str, BeautifulSoup]) -> dict[str, List[BeautifulSoup]]:
+def process_html_faq_data(html_faq_data: dict[str, BeautifulSoup]) -> dict[str, list[BeautifulSoup]]:
     processed_data = {}
 
     for card_code, rulings_html in html_faq_data.items():
