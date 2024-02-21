@@ -63,9 +63,9 @@ class Ruling(BaseModel):
         arbitrary_types_allowed = True
 
     ruling_type: RulingType
-    question: str | None = None
-    answer: str | None = None
-    content: list[str] | None = None
+    question: Optional[str] = None
+    answer: Optional[str] = None
+    content: Optional[List[str]] = None
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -129,10 +129,10 @@ def convert_json_to_html(faq_data: dict[str, dict[str, str]]) -> dict[str, Beaut
     }
 
 
-def print_token_stream(tokens: list[md_it.token.Token], nest_level: int = 0) -> None:
+def print_token_stream(tokens: List[md_it.token.Token], nest_level: int = 0) -> None:
     for token in tokens:
         for i in range(nest_level):
-            print(f"{' ' * 2 * i}â¾â¾â¾|")
+            print(f"{' ' * 2 * i}Ã¢ÂÂ¾Ã¢ÂÂ¾Ã¢ÂÂ¾|")
         if not token.children:
             tok = token.as_dict(
                 children=True, filter=lambda k, v: k in ("type", "tag", "markup", "content")
@@ -171,8 +171,9 @@ def process_markdown_faq_data(markdown_faq_data: dict[str, str]) -> None:
         print(f"\n{'=' * 80}\n\n")
 
 
-def process_ruling_html(ruling: BeautifulSoup) -> list[Ruling]:
+def process_ruling_html(ruling: BeautifulSoup) -> List[Ruling]:
     rulings = []
+    current_question = None
     for strong in ruling.find_all("strong"):
         stripped_strong = strong.get_text(strip=True).strip(":").lower()
         if stripped_strong in TEXT_TO_RULING_TYPE:
@@ -184,15 +185,18 @@ def process_ruling_html(ruling: BeautifulSoup) -> list[Ruling]:
                     content_str = str(nxt).strip()
                     if content_str:  # Only add non-empty strings
                         between.append(content_str)
-                    ruling_type = TEXT_TO_RULING_TYPE[stripped_strong]
-            if rulings and rulings[-1].ruling_type == RulingType.QUESTION and ruling_type == RulingType.ANSWER:
-                rulings[-1].content.extend(between)
+            ruling_type = TEXT_TO_RULING_TYPE[stripped_strong]
+            if ruling_type == RulingType.QUESTION:
+                current_question = ' '.join(between)
+            elif ruling_type == RulingType.ANSWER and current_question is not None:
+                rulings.append(Ruling(ruling_type=RulingType.QUESTION, question=current_question, answer=' '.join(between)))
+                current_question = None
             else:
-                rulings.append(Ruling(ruling_type=ruling_type.value, content=between))
+                rulings.append(Ruling(ruling_type=ruling_type, content=between))
     return rulings
 
 
-def process_html_faq_data(html_faq_data: dict[str, BeautifulSoup]) -> dict[str, list[BeautifulSoup]]:
+def process_html_faq_data(html_faq_data: dict[str, BeautifulSoup]) -> dict[str, List[BeautifulSoup]]:
     processed_data = {}
 
     for card_code, rulings_html in html_faq_data.items():

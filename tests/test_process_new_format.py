@@ -48,3 +48,24 @@ def test_process_ruling_html_various_types(input_html, expected_ruling_types):
     assert len(result) == len(expected_ruling_types)
     for ruling, expected_type in zip(result, expected_ruling_types):
         assert ruling.ruling_type == expected_type
+
+from hypothesis import given
+from hypothesis.strategies import text, lists, sampled_from
+from pydantic import ValidationError
+
+@given(question=text(), answer=text())
+def test_ruling_with_hypothesis(question, answer):
+    try:
+        ruling = Ruling(ruling_type=RulingType.QUESTION, question=question, answer=answer)
+        assert ruling.question == question
+        assert ruling.answer == answer
+    except ValidationError:
+        pass  # Expect validation errors for invalid inputs
+
+@given(content=lists(text(), min_size=1))
+def test_ruling_content_with_hypothesis(content):
+    ruling_type = sampled_from([RulingType.ERRATA, RulingType.CLARIFICATION, RulingType.NOTE]).example()
+    ruling = Ruling(ruling_type=ruling_type, content=content)
+    assert ruling.content == content
+    assert ruling.question is None
+    assert ruling.answer is None
