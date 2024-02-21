@@ -169,7 +169,7 @@ def process_markdown_faq_data(markdown_faq_data: dict[str, str]) -> None:
         print(f"\n{'=' * 80}\n\n")
 
 
-def process_ruling_html(ruling: BeautifulSoup) -> list[BeautifulSoup]:
+def process_ruling_html(ruling: BeautifulSoup) -> list[str]:
     ruling_sections = []
     for strong in ruling.find_all("strong"):
         stripped_strong = strong.get_text(strip=True).strip(":").lower()
@@ -182,7 +182,10 @@ def process_ruling_html(ruling: BeautifulSoup) -> list[BeautifulSoup]:
                     between.append(nxt.get_text())
                 elif isinstance(nxt, bs4.NavigableString):
                     between.append(str(nxt))
-            ruling_sections.append(between)
+            ruling_text = ' '.join(between).strip()
+            if ruling_text:
+                print(f"Ruling type: {stripped_strong}, Text: {ruling_text}")
+                ruling_sections.append(ruling_text)
     return ruling_sections
 
 
