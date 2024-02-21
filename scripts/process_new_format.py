@@ -8,6 +8,7 @@ from enum import Enum, auto
 from bs4 import BeautifulSoup, Tag
 import markdown_it as md_it
 import markdownify
+import bs4
 from bs4 import BeautifulSoup
 
 from symbol import postProcess, tokenize
@@ -31,7 +32,7 @@ class Ruling(BaseModel):
     class Config:
         arbitrary_types_allowed = True
     ruling_type: RulingType
-    content: list[Union[Tag, str]]
+    content: list[Tag | str]
 
 
 logging.basicConfig(level=logging.INFO)
@@ -209,7 +210,7 @@ def process_ruling_html(ruling: BeautifulSoup) -> List[Ruling]:
             RulingType.QUESTION, RulingType.ANSWER):
                 rulings[-1].content.extend(between)
             else:
-                rulings.append(Ruling(ruling_type=ruling_type, content=between))
+                rulings.append(Ruling(ruling_type=ruling_type.value, content=between))
     return rulings
 
 
@@ -225,16 +226,14 @@ def process_html_faq_data(
             for list_item in rulings_html.find_all("li")
         )
 
+        processed_rulings = []
         for ruling in rulings:
-            process_ruling_html(ruling)
+            processed_rulings.append(process_ruling_html(ruling))
+            print(f"Processed rulings for {card_code}:\n")
+            print(processed_rulings[-1])
 
         # Add the generator of BeautifulSoup objects to the processed data
         processed_data[card_code] = list(rulings)
-
-        print(f"Rulings for {card_code}:\n")
-        for i, ruling in enumerate(processed_data[card_code]):
-            print(f"Ruling {i + 1}:\n{ruling.prettify()}\n")
-        print(f"\n{'=' * 80}\n\n")
 
     return processed_data
 
