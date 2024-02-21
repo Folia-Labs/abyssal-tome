@@ -5,7 +5,7 @@ from pprint import pp
 from typing import List
 from pydantic import BaseModel
 from enum import Enum, auto
-import bs4
+from bs4 import BeautifulSoup, Tag
 import markdown_it as md_it
 import markdownify
 from bs4 import BeautifulSoup
@@ -31,7 +31,7 @@ class Ruling(BaseModel):
     class Config:
         arbitrary_types_allowed = True
     ruling_type: RulingType
-    content: list[bs4.Tag]
+    content: list[Union[Tag, str]]
 
 
 logging.basicConfig(level=logging.INFO)
@@ -145,7 +145,7 @@ def convert_html_to_markdown(faq_data: dict[str, dict[str, str]]) -> dict[str, s
 
 def convert_json_to_html(faq_data: dict[str, dict[str, str]]) -> dict[str, BeautifulSoup]:
     return {
-        card_code: BeautifulSoup(card_data["text"]) for card_code, card_data in faq_data.items()
+        card_code: BeautifulSoup(card_data["text"], features="html.parser") for card_code, card_data in faq_data.items()
     }
 
 
@@ -221,7 +221,7 @@ def process_html_faq_data(
     for card_code, rulings_html in html_faq_data.items():
         # Find all list item tags and create a new BeautifulSoup object for each list item's contents
         rulings = (
-            BeautifulSoup("".join(str(content) for content in list_item.contents))
+            BeautifulSoup("".join(str(content) for content in list_item.contents), features="html.parser")
             for list_item in rulings_html.find_all("li")
         )
 
