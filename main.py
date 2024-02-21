@@ -24,7 +24,7 @@ from gql.transport.aiohttp import AIOHTTPTransport as GQL_Transport
 from starlette.middleware.cors import CORSMiddleware
 from tqdm.auto import tqdm
 from whoosh.index import create_in
-from whoosh.fields import *
+
 from whoosh.fields import Schema, TEXT, ID
 from whoosh.index import create_in, open_dir
 from whoosh.writing import AsyncWriter
@@ -139,9 +139,9 @@ def load_json_data() -> dict:
 
 
 async def highlight_text(span: ft.TextSpan, search_term: str) -> list[ft.TextSpan]:
-    term_pattern = reg.escape(term, special_only=True, literal_spaces=True)
+    term_pattern = reg.escape(search_term, special_only=True, literal_spaces=True)
     for tag in TAG_TO_LETTER.keys():
-        if term.lower() in tag and span.style and span.style.font_family == "Arkham Icons" and span.text == \
+        if search_term.lower() in tag and span.style and span.style.font_family == "Arkham Icons" and span.text == \
                 TAG_TO_LETTER[tag]:
             span.style.bgcolor = ft.colors.with_opacity(0.5, ft.colors.TERTIARY)
             return [span]
@@ -370,7 +370,7 @@ async def retrieve_card_text(card_id: str) -> dict:
     return results
 
 
-async def copy_ruling_to_clipboard(event: ft.ControlEvent, text: str, button: ft.ElevatedButton):
+async def copy_ruling_to_clipboard(event: ft.ControlEvent, ruling_text: str, button: ft.ElevatedButton):
     logging.info("Copying ruling to clipboard.")
     clipman.copy(ruling_text)
     clip.style.shadow = ft.BoxShadow(spread_radius=-1, blur_radius=10, color=ft.colors.BLACK, offset=ft.Offset(2, 2),
@@ -745,7 +745,7 @@ async def main(page: ft.Page):
 
     search_input_handler = SearchInputController(page, json_data)
 
-    search_input_handler = SearchInputChanged(page, json_data)
+    # search_input_handler = SearchController(page, json_data)
 
     search_input = ft.TextField(
         hint_text="Type to search...",

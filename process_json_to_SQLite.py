@@ -9,6 +9,7 @@ import regex as re
 # Define the SQLite database
 db = SqliteDatabase('rulings.db')
 
+
 # Define the model for the rulings, matching the schema in assets/rulings_schema.json
 class Ruling(Model):
     card_name = CharField()
@@ -21,6 +22,7 @@ class Ruling(Model):
     class Meta:
         database = db
 
+
 # Connect to the database and create tables
 db.connect()
 db.create_tables([Ruling])
@@ -29,10 +31,12 @@ db.create_tables([Ruling])
 with open('assets/rulings_schema.json', 'r') as schema_file:
     schema = json.load(schema_file)
 
+
 # Function to validate data against the schema
 def validate_data(data, schema):
     # Implement validation logic here
     pass
+
 
 # Function to process and insert data into the database
 def process_and_insert_data(data):
@@ -47,11 +51,13 @@ def process_and_insert_data(data):
             card_name=item['card_name'],
             type=item['type'],
             text=item['text'],
-            source_updated=datetime.datetime.strptime(item['source']['updated'], '%d %B %Y') if item['source']['updated'] else None,
+            source_updated=datetime.datetime.strptime(item['source']['updated'], '%d %B %Y') if item['source'][
+                'updated'] else None,
             source_type=item['source']['type'],
             source_version=item['source']['version']
         )
         ruling.save()
+
 
 # Load the processed data
 with open('assets/processed_data.json', 'r') as data_file:
@@ -65,12 +71,14 @@ for card_name, rulings in processed_data.items():
 # Close the database connection
 db.close()
 
+
 # Additional functions for querying and manipulating the database can be added here
 
 # Example function to query the database
 def query_rulings_by_card_name(card_name):
     query = Ruling.select().where(Ruling.card_name == card_name)
     return [model_to_dict(ruling) for ruling in query]
+
 
 # Example usage of the query function
 if __name__ == '__main__':
