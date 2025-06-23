@@ -1,0 +1,23 @@
+[
+  {
+    "source_type_hint": "discord_mythosbusters_rules",
+    "source_url_or_context": "https://discord.com/channels/mythosbusters/1234567890",
+    "raw_text": "UserX: Quick question about [Lucky!]. If I fail by 2, can I play two copies to pass?\nMJNewman_FFG: No, Lucky! (0) says 'If this skill test is successful instead'. Once the first Lucky resolves and makes the test successful, the trigger condition for the second Lucky is no longer met. (Approx Dec 2022)",
+    "retrieved_by": "jules_agent",
+    "retrieval_date_utc": "2024-03-16T10:00:00Z"
+  },
+  {
+    "source_type_hint": "bgg_card_comment",
+    "source_url_or_context": "https://boardgamegeek.com/arkham-horror-the-card-game/card/some-card/forums/0",
+    "raw_text": "I saw a ruling somewhere that said Machete's bonus damage applies against Massive enemies if you're engaged with them. Was that official? Seems to be from an old email.",
+    "retrieved_by": "jules_agent",
+    "retrieval_date_utc": "2024-03-16T10:05:00Z"
+  },
+  {
+    "source_type_hint": "generic_forum_post",
+    "source_url_or_context": "someforum.com/thread/123",
+    "raw_text": "Q: Can [Working a Hunch] be played if there are no clues at your location? A: The card says 'Discover 1 clue at your location'. If there are no clues to discover, you cannot play the card, as you cannot resolve its effect. This is a general game principle for 'discover' effects. (Source: FFG Email ruling, early 2018)",
+    "retrieved_by": "jules_agent",
+    "retrieval_date_utc": "2024-03-16T10:10:00Z"
+  }
+]

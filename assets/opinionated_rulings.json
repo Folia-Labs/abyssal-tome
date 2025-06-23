@@ -1,0 +1,44 @@
+[
+  {
+    "opinion_id": "a1b2c3d4-e5f6-7777-8888-999900000001",
+    "applies_to_ruling_id": "EXISTING_RULING_ID_1",
+    "opinion_text": "While the official ruling states X, our playgroup finds it significantly more enjoyable and thematic to rule Y instead, because Z. This particularly affects cards A and B.",
+    "opinion_summary": "Play Y instead of X for thematic reasons.",
+    "provenance": {
+      "author": "The Innsmouth Irregulars Playgroup",
+      "source_description": "Group Consensus",
+      "source_url": null,
+      "date_of_opinion": "2023-11-01"
+    },
+    "tags": ["house_rule", "thematic_adjustment"],
+    "replaces_official_text": true
+  },
+  {
+    "opinion_id": "a1b2c3d4-e5f6-7777-8888-999900000002",
+    "applies_to_ruling_id": "EXISTING_RULING_ID_2",
+    "opinion_text": "The timing on this interaction is notoriously tricky. While technically correct, many players (including some designers in informal chats) suggest that focusing on intent (resolving effect A before B) leads to a smoother game experience, even if it means slightly bending the strict sequence listed in the FAQ.",
+    "opinion_summary": "Suggests focusing on intent for smoother play in a tricky timing interaction.",
+    "provenance": {
+      "author": "Community Consensus (via various forums)",
+      "source_description": "Various online discussions",
+      "source_url": null,
+      "date_of_opinion": null
+    },
+    "tags": ["tricky_timing", "community_variant", "designer_intent_speculation"],
+    "replaces_official_text": false
+  },
+  {
+    "opinion_id": "a1b2c3d4-e5f6-7777-8888-999900000003",
+    "applies_to_ruling_id": "EXISTING_RULING_ID_1",  // Another opinion on the same ruling
+    "opinion_text": "We strongly disagree with the official stance. It nerfs an entire archetype. Our fix is simple: ignore that ruling entirely.",
+    "opinion_summary": "Ignore official ruling due to balance concerns.",
+    "provenance": {
+      "author": "Arkham Central Podcast",
+      "source_description": "Podcast Episode 42",
+      "source_url": "http://arkhamcentral.example.com/episode42",
+      "date_of_opinion": "2024-01-15"
+    },
+    "tags": ["balance_concern", "controversial", "alternative_interpretation"],
+    "replaces_official_text": true
+  }
+]
