@@ -88,7 +88,13 @@ class CardDisplay:
 # Global storage
 ALL_RULINGS_DATA: dict[str, RulingModel] = {}
 ALL_OPINIONS_DATA: dict[str, list[OpinionatedRulingModel]] = {}
-CARD_INFO_DATA: dict[str, dict[str, any]] = {}
+# At the top of src/abyssal_tome/model.py, add:
+from typing import Any
+
+# …
+
+# Then, update line 91:
+CARD_INFO_DATA: dict[str, dict[str, Any]] = {}
 
 
 # --- Data Loading Functions ---
