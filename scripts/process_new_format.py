@@ -108,24 +108,21 @@ TEXT_TO_RULING_TYPE: dict[str, RulingType] = {
 
 def load_faqs(faqs_path: Path) -> dict[str, dict[str, str]]:
     # Path validation and loading logic
+def load_faqs(faqs_path: Path) -> dict[str, dict[str, str]]:
     """
     Load FAQ data from a JSON file after validating the file's existence, type, extension, and non-emptiness.
-    
-    Parameters:
-    """
-    Load FAQ data from a JSON file after validating the file's existence, type, extension, and non-emptiness.
-    
+
     Parameters:
         faqs_path (Path): Path to the FAQ JSON file.
-    
+
     Returns:
         dict[str, dict[str, str]]: Parsed FAQ data as a dictionary.
-    
+
     Raises:
         FileNotFoundError: If the file does not exist.
         ValueError: If the path is not a file, is not a JSON file, or is empty.
     """
-    """
+    # Path validation and loading logic follows…
     if not faqs_path.exists():
         raise FileNotFoundError(f"File {faqs_path} does not exist.")
     if not faqs_path.is_file():
