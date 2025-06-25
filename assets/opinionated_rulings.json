@@ -29,7 +29,7 @@
   },
   {
     "opinion_id": "a1b2c3d4-e5f6-7777-8888-999900000003",
-    "applies_to_ruling_id": "EXISTING_RULING_ID_1",  // Another opinion on the same ruling
+    "applies_to_ruling_id": "EXISTING_RULING_ID_1",
     "opinion_text": "We strongly disagree with the official stance. It nerfs an entire archetype. Our fix is simple: ignore that ruling entirely.",
     "opinion_summary": "Ignore official ruling due to balance concerns.",
     "provenance": {

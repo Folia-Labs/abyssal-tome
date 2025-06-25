@@ -1,17 +1,20 @@
 import datetime
 import json
 import logging
+
+# from typing import List, Dict, Any, Optional # Replaced by built-in types or new syntax
 import uuid
 
-from bs4 import BeautifulSoup # For stripping HTML if needed from original_html_snippet
+from bs4 import BeautifulSoup  # For stripping HTML if needed from original_html_snippet
 
 # We are working with dictionaries that conform to Ruling/Provenance models
 # but won't strictly parse them with Pydantic here to keep this script simpler.
 # The Pydantic models are defined in `process_new_format.py`.
 
-logging.basicConfig(level=logging.INFO)
+from abyssal_tome import constants  # Updated import path
 
-from abyssal_tome import constants # Updated import path
+logging.basicConfig(level=logging.INFO)
+# DEFAULT_SOURCE_CARD_CODE_EXTERNAL is now in constants.py
 
 # --- Placeholder AI Functions ---
 
@@ -30,8 +33,8 @@ def ai_get_related_cards(
     # Simulate finding one new card code not already present
     # In a real scenario, this would involve an LLM call.
     simulated_new_code = "ai_card_01"
-    if "important_card_mentioned" in ruling_text.lower(): # Example trigger
-        simulated_new_code = "01001" # Example: Roland Banks
+    if "important_card_mentioned" in ruling_text.lower():  # Example trigger
+        simulated_new_code = "01001"  # Example: Roland Banks
 
     combined_codes = set(existing_related_codes)
     if simulated_new_code != source_card_code:
@@ -40,7 +43,7 @@ def ai_get_related_cards(
     # Remove source_card_code if it accidentally got added
     combined_codes.discard(source_card_code)
 
-    return sorted(list(combined_codes))
+    return sorted(combined_codes)
 
 
 def ai_extract_provenance_details(
@@ -100,14 +103,15 @@ def ai_generate_tags(ruling_text: str, existing_tags: list[str]) -> list[str]:
         new_tags.add("timing_window")
     if "cancel" in ruling_text.lower():
         new_tags.add("cancellation_effect")
-    return sorted(list(new_tags))
+    return sorted(new_tags)
+
 
 # --- Conversion for External Rulings ---
 
 
 def convert_external_ruling_to_standard_format(
-    external_ruling: dict[str, Any],
-) -> dict[str, Any] | None:
+    external_ruling: dict[str, any],
+) -> dict[str, any] | None:
     """
     Convert a raw external ruling dictionary into a standardized ruling format.
     
@@ -165,10 +169,10 @@ def convert_external_ruling_to_standard_format(
         standard_ruling["answer"] = extracted_qa["answer"]
         standard_ruling["text"] = None
     else:
-        standard_ruling["ruling_type"] = "CLARIFICATION" # Default for non-Q&A
+        standard_ruling["ruling_type"] = "CLARIFICATION"  # Default for non-Q&A
         standard_ruling["question"] = None
         standard_ruling["answer"] = None
-        standard_ruling["text"] = raw_text # Use full raw text if not Q&A
+        standard_ruling["text"] = raw_text  # Use full raw text if not Q&A
 
     return standard_ruling
 
@@ -191,7 +195,7 @@ def enrich_rulings(rulings_data: list[dict[str, any]]) -> list[dict[str, any]]:
     enriched_rulings: list[dict[str, any]] = []
     for ruling_dict in rulings_data:
         # Make a copy to avoid modifying the original list of dicts in-place if it's reused
-        enriched_ruling = ruling_dict.copy()  # Works copy for dicts of primitives/nested dicts
+        enriched_ruling = ruling_dict.copy()  # Works淺copy for dicts of primitives/nested dicts
 
         # Ensure basic structure for provenance if it's somehow missing (e.g. from external)
         if "provenance" not in enriched_ruling:
@@ -254,10 +258,7 @@ def enrich_rulings(rulings_data: list[dict[str, any]]) -> list[dict[str, any]]:
                 enriched_ruling["text"] = None  # Clear out old text field
 
         # 4. Tag Generation
-        enriched_ruling["tags"] = ai_generate_tags(
-            text_for_ai,
-            enriched_ruling.get("tags", [])
-        )
+        enriched_ruling["tags"] = ai_generate_tags(text_for_ai, enriched_ruling.get("tags", []))
 
         enriched_rulings.append(enriched_ruling)
     return enriched_rulings
@@ -290,7 +291,7 @@ def main() -> None:
         except json.JSONDecodeError as e:
             logging.error(f"Error decoding JSON from {processed_input_path}: {e}")
             return
-        except (OSError, IOError) as e:
+        except OSError as e:
             logging.error(f"Error reading from {processed_input_path}: {e}")
             return
 
@@ -320,7 +321,7 @@ def main() -> None:
 
         except json.JSONDecodeError as e:
             logging.error(f"Error decoding JSON from {external_input_path}: {e}")
-        except (OSError, IOError) as e:
+        except OSError as e:
             logging.error(f"Error reading from {external_input_path}: {e}")
 
     # Perform AI enrichment on the combined list
