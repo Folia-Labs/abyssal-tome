@@ -21,8 +21,8 @@ from whoosh.fields import ID, TEXT, Schema
 from whoosh.index import create_in, open_dir
 from whoosh.writing import AsyncWriter
 
-from .utils import debounce # Corrected relative import
-from . import constants # Import constants from the package
+from .utils import debounce  # Corrected relative import
+from . import constants  # Import constants from the package
 
 logging.basicConfig(level=logging.WARNING, stream=sys.stdout)
 
