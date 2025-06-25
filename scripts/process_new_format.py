@@ -108,6 +108,19 @@ TEXT_TO_RULING_TYPE: dict[str, RulingType] = {
 
 def load_faqs(faqs_path: Path) -> dict[str, dict[str, str]]:
     # Path validation and loading logic
+    """
+    Load FAQ data from a JSON file after validating the file's existence, type, extension, and non-emptiness.
+    
+    Parameters:
+    	faqs_path (Path): Path to the FAQ JSON file.
+    
+    Returns:
+    	dict[str, dict[str, str]]: Parsed FAQ data as a dictionary.
+    
+    Raises:
+    	FileNotFoundError: If the file does not exist.
+    	ValueError: If the path is not a file, is not a JSON file, or is empty.
+    """
     if not faqs_path.exists():
         raise FileNotFoundError(f"File {faqs_path} does not exist.")
     if not faqs_path.is_file():
@@ -165,6 +178,11 @@ def print_token_stream(tokens: List[md_it.token.Token], nest_level: int = 0) -> 
 
 
 def process_markdown_faq_data(markdown_faq_data: dict[str, str]) -> None:
+    """
+    Parses and prints the Markdown token streams for each card's FAQ data.
+    
+    For each card, this function uses a MarkdownIt parser with custom inline rules to tokenize the FAQ markdown text and outputs a formatted representation of the token stream.
+    """
     md = md_it.MarkdownIt("gfm-like", {"typographer": True})
     md.enable(["replacements", "smartquotes"])
     md.inline.ruler.push("symbol", tokenize)
@@ -181,6 +199,12 @@ def process_markdown_faq_data(markdown_faq_data: dict[str, str]) -> None:
 
 
 def extract_faq_source_name(text_content: str) -> str | None:
+    """
+    Extracts the FAQ source name and version from the given text content using a predefined regex pattern.
+    
+    Returns:
+        The formatted FAQ source name and version string if found, otherwise None.
+    """
     match = constants.FAQ_VERSION_PATTERN.search(text_content)
     if match:
         return f"{match.group(1)} v.{match.group(2)}, {match.group(3)}"
@@ -188,6 +212,16 @@ def extract_faq_source_name(text_content: str) -> str | None:
 
 
 def extract_related_card_codes(html_content: str, current_card_code: str) -> list[str]:
+    """
+    Extracts all unique card codes linked within the given HTML content, excluding the current card's code.
+    
+    Parameters:
+        html_content (str): The HTML content to search for card code links.
+        current_card_code (str): The card code to exclude from the results.
+    
+    Returns:
+        list[str]: A sorted list of related card codes found in the HTML content.
+    """
     found_codes = set(constants.CARD_LINK_PATTERN.findall(html_content))
     # Remove the current card's code if it's found, as it's the source_card_code
     return sorted(code for code in found_codes if code != current_card_code)
@@ -197,8 +231,17 @@ def process_ruling_html(
     source_card_code: str, ruling_soup: BeautifulSoup, card_updated_at: str | None
 ) -> list[Ruling]:
     """
-    Processes a BeautifulSoup object representing a single ruling item (e.g., content of an <li>)
-    and extracts structured Ruling objects.
+    Extracts structured `Ruling` objects from a BeautifulSoup element representing a single FAQ ruling item.
+    
+    Parses the HTML content of a ruling (typically an `<li>` element), identifying ruling types (such as question, answer, errata, or clarification) based on `<strong>` tags and their associated content. Handles question-answer pairs, clarification blocks, and provenance extraction, and associates related card codes found in the HTML. Returns a list of `Ruling` objects representing the structured rulings extracted from the input HTML.
+     
+    Parameters:
+        source_card_code (str): The card code to which the ruling belongs.
+        ruling_soup (BeautifulSoup): The parsed HTML element containing the ruling.
+        card_updated_at (str | None): The last update timestamp for the card's FAQ entry.
+    
+    Returns:
+        list[Ruling]: A list of structured `Ruling` objects extracted from the HTML.
     """
     rulings_for_item: list[Ruling] = []
     current_question_html_str: str | None = None  # Store HTML string of the question part
@@ -358,8 +401,12 @@ def process_ruling_html(
 
 def process_html_faq_data(raw_faq_json: dict[str, dict]) -> list[Ruling]:
     """
-    raw_faq_json is the direct output from load_faqs:
-    { card_code: {"text": "<html_string>", "updated_at": "isodate", ...}, ... }
+    Extracts and structures all rulings from raw FAQ JSON data for multiple cards.
+    
+    For each card, parses the HTML FAQ content, identifies individual ruling items (typically list elements), and processes them into structured `Ruling` objects with provenance and related metadata. Handles both list-based and block-level FAQ formats.
+    
+    Returns:
+        list[Ruling]: A list of all extracted and structured rulings across all cards.
     """
     all_rulings: list[Ruling] = []
 
@@ -385,6 +432,11 @@ def process_html_faq_data(raw_faq_json: dict[str, dict]) -> list[Ruling]:
 
 
 def main() -> None:
+    """
+    Loads FAQ data, processes it into structured ruling objects, and writes the results to a JSON file.
+    
+    Attempts to load the FAQ JSON from a configured path, extract and structure all rulings, and serialize them to a specified output file. Logs errors if loading or writing fails.
+    """
     output_path = constants.PROCESSED_RULINGS_V2_PATH
 
     try:

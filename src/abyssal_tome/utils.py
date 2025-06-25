@@ -3,6 +3,15 @@ import functools
 
 
 def debounce(wait):
+    """
+    Decorator that debounces an asynchronous function, ensuring it is called only once after a specified delay.
+    
+    Parameters:
+        wait (float): The delay in seconds to wait after the last call before executing the function.
+    
+    Returns:
+        Callable: A decorator that wraps an async function, delaying its execution and canceling any previous pending calls within the wait period.
+    """
     def decorator(fn):
         @functools.wraps(fn)
         async def debounced(*args, **kwargs) -> None:

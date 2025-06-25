@@ -35,6 +35,12 @@ class EntryType(StrEnum):
 
 
 def parse_text(text) -> None:
+    """
+    Extracts FAQ reference metadata from the input text and returns the cleaned text along with source type, version, and date.
+    
+    Returns:
+        tuple: A tuple containing the cleaned text (str), source type (str or None), version (str or None), and date (str or None).
+    """
     source_type = version = date = None
 
     # Find all FAQ references in the text
@@ -58,6 +64,15 @@ def parse_text(text) -> None:
 
 
 def load_card_names(*card_files):
+    """
+    Load card codes and their corresponding names from one or more JSON card data files.
+    
+    Parameters:
+    	card_files: Paths to JSON files containing card data.
+    
+    Returns:
+    	Dict mapping card codes to card names. If a card does not have a name, "Unknown Card" is used as the default.
+    """
     return {
         card_code: card_details.get("name", "Unknown Card")
         for cards_file in card_files
@@ -68,6 +83,10 @@ def load_card_names(*card_files):
 
 
 def process_ruling(ruling, item_code, updated_at=None):
+    """
+    Process and clean a single ruling entry, extracting metadata, formatting text, and categorizing the entry.
+    
+    Removes formatting artifacts, extracts FAQ references, reformats update timestamps, and determines the entry type (erratum, question/answer, or clarification). Returns a structured dictionary with cleaned content, source metadata, card name, and card code, or None if the ruling is empty or overruled.
     logging.info(f"Original ruling: {ruling}, updated_at: {updated_at}")
 
     # Remove strikethrough text in Markdown and HTML
@@ -139,6 +158,16 @@ def process_ruling(ruling, item_code, updated_at=None):
 
 
 def process_json_file(file_path, card_names):  # Fallback to current time if not provided
+    """
+    Processes a JSON file containing card rulings, extracting and cleaning each ruling, and mapping them to their corresponding card names.
+    
+    Parameters:
+        file_path (str or Path): Path to the JSON file containing rulings.
+        card_names (dict): Mapping of card codes to card names.
+    
+    Returns:
+        dict: A dictionary mapping card names to lists of processed ruling entries.
+    """
     try:
         with open(file_path) as file:
             data = json.load(file)
@@ -180,6 +209,12 @@ def process_json_file(file_path, card_names):  # Fallback to current time if not
 
 
 def categorize_entry(text):
+    """
+    Determine the entry type of a ruling text based on specific patterns.
+    
+    Returns:
+        EntryType: The type of entry, such as ERRATUM, QUESTION_ANSWER, or CLARIFICATION, depending on the presence of identifying patterns in the text.
+    """
     patterns = {"**Erratum:**": EntryType.ERRATUM, "**Q:**": EntryType.QUESTION_ANSWER}
     return next(
         (entry_type for pattern, entry_type in patterns.items() if pattern in text),
