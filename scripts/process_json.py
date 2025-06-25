@@ -1,15 +1,15 @@
-import regex as re
 import datetime
-import codecs
-import logging
 import json
+import logging
 from enum import StrEnum, unique
 from pathlib import Path
+
+import regex as re
 
 PLAYER_CARDS_PATH = Path(r"../player_cards.json")
 OTHER_CARDS_PATH = Path(r"../other_cards.json")
 FAQS_PATH = Path(r"../faqs")
-PROCESSED_DATA_PATH = Path(r'../assets/processed_data.json')
+PROCESSED_DATA_PATH = Path(r"../assets/processed_data.json")
 
 # NB_PATTERN = re.compile(
 #     r"\*\*NB:\*\* ArkhamDB now incorporates errata from the Arkham Horror FAQ in its card text, so the ArkhamDB text and the card image above differ, as the ArkhamDB text has been edited to contain this erratum \(updated .+?\):\s?")
@@ -25,6 +25,7 @@ PROCESSED_DATA_PATH = Path(r'../assets/processed_data.json')
 # BOLD_TAGS_PATTERN = re.compile(r"<b>|</b>")
 # ITALIC_TAGS_PATTERN = re.compile(r"<i>|</i>")
 # NEWLINE_PATTERN = re.compile(r"\\n")
+
 
 @unique
 class EntryType(StrEnum):
@@ -55,11 +56,12 @@ def parse_text(text) -> None:
 
     return text, source_type, version, date
 
+
 def load_card_names(*card_files):
     return {
-        card_code: card_details.get('name', 'Unknown Card')
+        card_code: card_details.get("name", "Unknown Card")
         for cards_file in card_files
-        for set_value in json.load(open(cards_file, 'r', encoding='utf-8-sig')).values()
+        for set_value in json.load(open(cards_file, encoding="utf-8-sig")).values()
         for card_type_value in set_value.values()
         for card_code, card_details in card_type_value.items()
     }
@@ -99,17 +101,19 @@ def process_ruling(ruling, item_code, updated_at=None):
         return None
 
     # If the ruling text contains '**OVERRULED SEE BELOW**', discard the ruling
-    if '**OVERRULED SEE BELOW**' in ruling:
+    if "**OVERRULED SEE BELOW**" in ruling:
         return None
 
     # Remove '**UPDATE:** ' from the ruling text
-    ruling = ruling.replace('\\*\\*Erratum\\*\\*', '**Erratum**')  # Ensure Erratum is properly formatted
-    ruling = ruling.replace('\\*\\*Q:\\*\\*', '**Q:**')  # Ensure Q: is properly formatted
-    ruling = ruling.replace('\\*\\*A:\\*\\*', '**A:**')  # Ensure A: is properly formatted
+    ruling = ruling.replace(
+        "\\*\\*Erratum\\*\\*", "**Erratum**"
+    )  # Ensure Erratum is properly formatted
+    ruling = ruling.replace("\\*\\*Q:\\*\\*", "**Q:**")  # Ensure Q: is properly formatted
+    ruling = ruling.replace("\\*\\*A:\\*\\*", "**A:**")  # Ensure A: is properly formatted
 
-    ruling = ruling.replace('**UPDATE:** ', '')
+    ruling = ruling.replace("**UPDATE:** ", "")
 
-    ruling = ruling.replace('**UPDATE:** ', '')
+    ruling = ruling.replace("**UPDATE:** ", "")
 
     entry_type = categorize_entry(ruling)
     if entry_type == EntryType.QUESTION_ANSWER:
@@ -124,11 +128,7 @@ def process_ruling(ruling, item_code, updated_at=None):
     else:
         question = ""
         answer = ""
-    source = {
-        "updated": date or updated_at,
-        "type": source_type,
-        "version": version
-    }
+    source = {"updated": date or updated_at, "type": source_type, "version": version}
     return {
         "type": entry_type,
         "content": {"text": ruling, "question": question, "answer": answer},
@@ -137,9 +137,10 @@ def process_ruling(ruling, item_code, updated_at=None):
         "card_code": item_code,
     }
 
-def process_json_file(file_path, card_names): # Fallback to current time if not provided
+
+def process_json_file(file_path, card_names):  # Fallback to current time if not provided
     try:
-        with open(file_path, 'r') as file:
+        with open(file_path) as file:
             data = json.load(file)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         logging.error(f"Error reading file {file_path}: {e}")
@@ -162,12 +163,16 @@ def process_json_file(file_path, card_names): # Fallback to current time if not 
             rulings = re.split(r"(?<=\.\s+|\A) - (?!\bFAQ\b)|(?<!\breads:\s*) - (?!\bFAQ\b)", text)
             # Split the text by "- " to get a list of rulings, ensuring it's not in the middle of a sentence
             rulings = re.split(r"(?<!\w) - (?!\bFAQ\b)", text)[1:]
-            rulings = re.split(r"- (?!\bFAQ\b)", text)[1:]  # Split the text by "- " not followed by "FAQ"  # Split the text by "- " to get a list of rulings
+            rulings = re.split(
+                r"- (?!\bFAQ\b)", text
+            )[
+                1:
+            ]  # Split the text by "- " not followed by "FAQ"  # Split the text by "- " to get a list of rulings
             rulings_list = []
             for ruling in rulings:
-                if ruling := process_ruling(ruling, item.get('code'), item.get('updated_at')):
+                if ruling := process_ruling(ruling, item.get("code"), item.get("updated_at")):
                     rulings_list.append(ruling)
-            processed_data[card_names.get(item.get('code'), "Unknown Card")] = rulings_list
+            processed_data[card_names.get(item.get("code"), "Unknown Card")] = rulings_list
         except Exception as e:
             logging.error(f"Error processing item {item}: {e}")
 
@@ -175,18 +180,18 @@ def process_json_file(file_path, card_names): # Fallback to current time if not 
 
 
 def categorize_entry(text):
-    patterns = {
-        "**Erratum:**": EntryType.ERRATUM,
-        "**Q:**": EntryType.QUESTION_ANSWER
-    }
-    return next((entry_type for pattern, entry_type in patterns.items() if pattern in text), EntryType.CLARIFICATION)
+    patterns = {"**Erratum:**": EntryType.ERRATUM, "**Q:**": EntryType.QUESTION_ANSWER}
+    return next(
+        (entry_type for pattern, entry_type in patterns.items() if pattern in text),
+        EntryType.CLARIFICATION,
+    )
 
 
 card_names = load_card_names(PLAYER_CARDS_PATH, OTHER_CARDS_PATH)
 
 all_processed_data = {}
-for file_path in FAQS_PATH.glob('*faqs*.json'):
+for file_path in FAQS_PATH.glob("*faqs*.json"):
     all_processed_data |= process_json_file(file_path, card_names)
 
-with open(PROCESSED_DATA_PATH, 'w', encoding='utf-8') as f:
+with open(PROCESSED_DATA_PATH, "w", encoding="utf-8") as f:
     json.dump(all_processed_data, f, indent=4, ensure_ascii=False)

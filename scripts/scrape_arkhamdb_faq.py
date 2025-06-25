@@ -1,82 +1,110 @@
-import pathlib
-from pathlib import Path
-
-import requests
 import asyncio
-import aiohttp
 import json
 import re
+
+import aiohttp
+import requests
 import tqdm
 from tqdm.asyncio import tqdm_asyncio
 
-# Regex patterns for replacing HTML elements
-span_rule = re.compile(r'<span class="icon-([^"]+)"( title="[^"]*")?></span>')
-newline_rule = re.compile(r'\r\n')
-card_link_rule = re.compile(r'http(s?)://arkhamdb\.com/card/')
-rules_link_rule = re.compile(r'http(s?)://arkhamdb.com/rules#')
-paragraph_rule = re.compile(r'<p>')
-close_paragraph_rule = re.compile(r'</p>')
+from abyssal_tome import constants # Updated import path
 
-# Dictionary mapping cycle codes to their names
-cycles = {
-    '01': 'core', '02': 'dwl', '03': 'ptc', '04': 'tfa', '05': 'tcu',
-    '06': 'tde', '07': 'tic', '08': 'eoe', '09': 'tsk', '50': 'rtnotz',
-    '51': 'rtdwl', '52': 'rtptc', '53': 'rttfa', '54': 'rttcu',
-    '60': 'investigator', '61': 'investigator', '62': 'investigator',
-    '63': 'investigator', '64': 'investigator', '81': 'standalone',
-    '82': 'standalone', '83': 'standalone', '84': 'standalone',
-    '85': 'standalone', '86': 'standalone', '90': 'parallel', '98': 'books', '99': 'promo',
-}
+# Regex patterns and cycles map moved to constants.py
 
 
-def fetch_cards():
+def fetch_cards() -> list[dict[str, any]]:  # Added type hint
     uri = "https://arkhamdb.com/api/public/cards/?encounter=1"
-    print('Fetching all cards from ArkhamDB.')
+    print("Fetching all cards from ArkhamDB.")
     response = requests.get(uri)
+    response.raise_for_status()  # Good practice to check for HTTP errors
     cards = response.json()
     print(f"Got {len(cards)} cards")
     return cards
 
 
-async def fetch_faq(session, card):
-    code = card['code']
+async def fetch_faq(
+    session: aiohttp.ClientSession, card: dict[str, any]
+) -> dict[str, any] | None:  # Added type hints
+    code = card.get("code")
+    if not code:
+        return None
     faq_uri = f"https://arkhamdb.com/api/public/faq/{code}.json"
-    async with session.get(faq_uri) as response:
-        return await response.json()
+    try:
+        async with session.get(faq_uri) as response:
+            response.raise_for_status()
+            return await response.json()
+    except aiohttp.ClientError as e:
+        print(f"Error fetching FAQ for card {code}: {e}")
+        return None
 
 
-def parse_faqs(faqs):
-    rulings = {}
-    for faq in tqdm.tqdm(faqs, desc='Parsing faqs'):
-        if not faq:
+def parse_faqs(faqs: list[dict[str, any] | None]) -> dict[str, dict[str, str]]:  # Added type hint
+    rulings: dict[str, dict[str, str]] = {}
+    for faq_item in tqdm.tqdm(
+        faqs, desc="Parsing faqs"
+    ):  # Renamed faq to faq_item to avoid confusion
+        if not faq_item:  # faq_item can be None if fetch_faq failed
             continue
-        faq_content = faq[0]
-        text = re.sub(span_rule, r'[\1]', faq_content['html'])
-        text = re.sub(newline_rule, '\n', text)
-        text = re.sub(card_link_rule, '/card/', text)
-        text = re.sub(rules_link_rule, '/rules#', text)
-        text = re.sub(paragraph_rule, '', text)
-        text = re.sub(close_paragraph_rule, '', text)
-        entry = {
-            'code': faq_content['code'],
-            'text': text,
-            'updated': faq_content['updated']['date']
-        }
-        rulings[faq_content['code']] = entry
+
+        # Ensure faq_item is a list and has content, as per original logic for faq[0]
+        if not isinstance(faq_item, list) or not faq_item:
+            print(f"Unexpected FAQ item format: {faq_item}")
+            continue
+        faq_content = faq_item[0]
+
+        if (
+            not isinstance(faq_content, dict)
+            or "html" not in faq_content
+            or "code" not in faq_content
+            or "updated" not in faq_content
+        ):
+            print(f"Skipping FAQ item with missing keys: {faq_content}")
+            continue
+
+        text = faq_content["html"]
+        text = re.sub(constants.SPAN_RULE_PATTERN, r"[\1]", text)
+        text = re.sub(constants.NEWLINE_RULE_PATTERN, "\n", text)
+        text = re.sub(constants.CARD_LINK_RULE_PATTERN, "/card/", text)
+        text = re.sub(constants.RULES_LINK_RULE_PATTERN, "/rules#", text)
+        text = re.sub(constants.PARAGRAPH_RULE_PATTERN, "", text)
+        text = re.sub(constants.CLOSE_PARAGRAPH_RULE_PATTERN, "", text)
+
+        updated_date = faq_content.get("updated", {}).get("date")
+        if not updated_date:
+            print(f"Skipping FAQ for card {faq_content['code']} due to missing update date.")
+            continue
+
+        entry = {"code": faq_content["code"], "text": text, "updated": updated_date}
+        rulings[faq_content["code"]] = entry
     return rulings
 
 
-async def main():
+async def main() -> None:
     cards = fetch_cards()
-    # cards = cards[:100]
-    tqdm_async = tqdm_asyncio()
-    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=5, limit_per_host=100)) as session:
-        tasks = [asyncio.ensure_future(fetch_faq(session, card)) for card in cards]
-        responses = await tqdm_async.gather(*tasks)
-    faqs = parse_faqs(responses)
-    with open('../faqs/faqs.json', 'w') as f:
-        json.dump(faqs, f, indent=2)
+    # cards = cards[:100] # For testing
+    # tqdm_async = tqdm_asyncio() # tqdm_asyncio() is not a class to instantiate directly
+
+    all_faq_responses: list[dict[str, any] | None] = []
+    async with aiohttp.ClientSession(
+        connector=aiohttp.TCPConnector(limit=5, limit_per_host=100)
+    ) as session:
+        tasks = [
+            fetch_faq(session, card) for card in cards if card
+        ]  # Added if card to ensure card is not None
+        # Wrap tasks with tqdm for progress bar
+        all_faq_responses = await tqdm_asyncio.gather(*tasks, desc="Fetching FAQs")
+
+    # Filter out None responses before parsing
+    valid_faqs = [faq for faq in all_faq_responses if faq is not None]
+    parsed_faq_data = parse_faqs(valid_faqs)
+
+    output_file_path = constants.FAQS_FILE_PATH
+    output_file_path.parent.mkdir(parents=True, exist_ok=True)  # Ensure directory exists
+
+    with output_file_path.open("w", encoding="utf-8") as f:
+        json.dump(parsed_faq_data, f, indent=2, ensure_ascii=False)
+    print(f"Successfully scraped and saved {len(parsed_faq_data)} FAQs to {output_file_path}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())
