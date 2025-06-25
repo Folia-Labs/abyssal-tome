@@ -614,8 +614,7 @@ async def main_flet_app(page: ft.Page) -> None: # Renamed main to main_flet_app
 
     # Indexing (consider doing this once at startup, not per page load if main_flet_app is called multiple times)
     # For a desktop app, this is fine. For web, this might be inefficient.
-    if not Path("indexdir").exists(): Path("indexdir").mkdir()
-    ix = create_in("indexdir", schema) # This might re-create, consider open_dir or proper setup
+    # Use existing ix variable created at module level
     print("Creating/Opening index.")
     with AsyncWriter(ix) as writer:
         for card_name, card_rulings in tqdm(json_data.items(), desc="Indexing cards"):
