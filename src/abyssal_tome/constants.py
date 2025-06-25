@@ -84,11 +84,7 @@ CYCLES_MAP: dict[str, str] = {
     '85': 'standalone', '86': 'standalone', '90': 'parallel', '98': 'books', '99': 'promo',
 }
 
-# --- Constants for scripts/process_json.py (old script, for completeness if ever needed) ---
-OLD_PLAYER_CARDS_PATH = Path("../player_cards.json") # Assuming relative to scripts/
-OLD_OTHER_CARDS_PATH = Path("../other_cards.json")  # Assuming relative to scripts/
-OLD_FAQS_DIR_PATH = Path("../faqs")                 # Assuming relative to scripts/
-OLD_PROCESSED_DATA_PATH = Path('../assets/processed_data.json') # Assuming relative to scripts/
+# --- Constants for scripts/process_json.py ---
 
 # Add other general constants here if they arise
 # For example, output file paths for processed data could also be constants:
