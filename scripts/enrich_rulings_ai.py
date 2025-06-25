@@ -1,9 +1,8 @@
+import datetime
 import json
 import logging
-from pathlib import Path
-from typing import List, Dict, Any, Optional
 import uuid
-import datetime
+
 from bs4 import BeautifulSoup # For stripping HTML if needed from original_html_snippet
 
 # We are working with dictionaries that conform to Ruling/Provenance models
@@ -12,17 +11,20 @@ from bs4 import BeautifulSoup # For stripping HTML if needed from original_html_
 
 logging.basicConfig(level=logging.INFO)
 
-# Default card code to assign if a ruling from an external source doesn't mention one.
-# Could be a special code like "general_ruling" or a specific card if context implies.
-DEFAULT_SOURCE_CARD_CODE_EXTERNAL = "00000" # Placeholder for general/unknown source card
+from abyssal_tome import constants # Updated import path
 
 # --- Placeholder AI Functions ---
 
-def ai_get_related_cards(ruling_text: str, source_card_code: str, existing_related_codes: List[str]) -> List[str]:
+
+def ai_get_related_cards(
+    ruling_text: str, source_card_code: str, existing_related_codes: list[str]
+) -> list[str]:
     """
     Placeholder for an AI call to identify related cards from ruling text.
     """
-    logging.info(f"AI_PLACEHOLDER: Identifying related cards for text (source: {source_card_code}): '{ruling_text[:100]}...'")
+    logging.info(
+        f"AI_PLACEHOLDER: Identifying related cards for text (source: {source_card_code}): '{ruling_text[:100]}...'"
+    )
     # Simulate finding one new card code not already present
     # In a real scenario, this would involve an LLM call.
     simulated_new_code = "ai_card_01"
@@ -38,7 +40,10 @@ def ai_get_related_cards(ruling_text: str, source_card_code: str, existing_relat
 
     return sorted(list(combined_codes))
 
-def ai_extract_provenance_details(ruling_text: str, existing_provenance: Dict[str, Any]) -> Dict[str, Any]:
+
+def ai_extract_provenance_details(
+    ruling_text: str, existing_provenance: dict[str, any]
+) -> dict[str, any]:
     """
     Placeholder for an AI call to extract more detailed provenance.
     (e.g., if a ruling text mentions "Matt said on Discord on Jan 5, 2023")
@@ -47,13 +52,16 @@ def ai_extract_provenance_details(ruling_text: str, existing_provenance: Dict[st
     updated_provenance = existing_provenance.copy()
     if "discord ruling" in ruling_text.lower():
         updated_provenance["source_type"] = "discord_community_ruling"
-        updated_provenance["source_name"] = existing_provenance.get("source_name") or "Discord Snippet"
+        updated_provenance["source_name"] = (
+            existing_provenance.get("source_name") or "Discord Snippet"
+        )
         # Simulate extracting a date
         if not updated_provenance.get("source_date"):
-             updated_provenance["source_date"] = "2023-01-05T00:00:00Z" # Simulated date
+            updated_provenance["source_date"] = "2023-01-05T00:00:00Z"  # Simulated date
     return updated_provenance
 
-def ai_extract_q_and_a(raw_text: str) -> Optional[Dict[str, str]]:
+
+def ai_extract_q_and_a(raw_text: str) -> dict[str, str] | None:
     """
     Placeholder for an AI call to identify and separate Q&A from a raw text blob.
     This would be used for new, unstructured data sources.
@@ -68,7 +76,8 @@ def ai_extract_q_and_a(raw_text: str) -> Optional[Dict[str, str]]:
             return {"question": question, "answer": answer}
     return None
 
-def ai_generate_tags(ruling_text: str, existing_tags: List[str]) -> List[str]:
+
+def ai_generate_tags(ruling_text: str, existing_tags: list[str]) -> list[str]:
     """
     Placeholder for an AI call to generate relevant tags/keywords.
     """
@@ -82,23 +91,30 @@ def ai_generate_tags(ruling_text: str, existing_tags: List[str]) -> List[str]:
 
 # --- Conversion for External Rulings ---
 
-def convert_external_ruling_to_standard_format(external_ruling: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+
+def convert_external_ruling_to_standard_format(
+    external_ruling: dict[str, Any],
+) -> dict[str, Any] | None:
     """
     Converts a raw external ruling into the standard ruling dictionary format.
     Uses AI placeholders to extract Q&A and initial provenance.
     """
     raw_text = external_ruling.get("raw_text")
     if not raw_text:
-        logging.warning(f"External ruling skipped due to missing raw_text: {external_ruling.get('source_url_or_context')}")
+        logging.warning(
+            f"External ruling skipped due to missing raw_text: {external_ruling.get('source_url_or_context')}"
+        )
         return None
 
     # Initial Provenance from external source structure
     provenance = {
         "source_type": external_ruling.get("source_type_hint", "unknown_external"),
-        "source_name": None, # To be filled by AI or manual review
-        "source_date": None, # To be filled by AI or manual review
-        "retrieval_date": external_ruling.get("retrieval_date_utc", datetime.datetime.utcnow().isoformat()),
-        "source_url": external_ruling.get("source_url_or_context")
+        "source_name": None,  # To be filled by AI or manual review
+        "source_date": None,  # To be filled by AI or manual review
+        "retrieval_date": external_ruling.get(
+            "retrieval_date_utc", datetime.datetime.utcnow().isoformat()
+        ),
+        "source_url": external_ruling.get("source_url_or_context"),
     }
 
     # Attempt to extract more details from text using AI placeholder
@@ -112,22 +128,22 @@ def convert_external_ruling_to_standard_format(external_ruling: Dict[str, Any]) 
         "id": ruling_id,
         # Try to find a card code in the raw_text for source_card_code, otherwise use default.
         # This is a very basic placeholder for card association.
-        "source_card_code": DEFAULT_SOURCE_CARD_CODE_EXTERNAL, # Placeholder, AI could improve this
-        "related_card_codes": [], # To be filled by ai_get_related_cards
+        "source_card_code": constants.DEFAULT_SOURCE_CARD_CODE_EXTERNAL,  # Placeholder, AI could improve this
+        "related_card_codes": [],  # To be filled by ai_get_related_cards
         "provenance": provenance,
-        "original_html_snippet": raw_text, # Store raw_text as the 'snippet' for external
-        "tags": [], # To be filled by ai_generate_tags
+        "original_html_snippet": raw_text,  # Store raw_text as the 'snippet' for external
+        "tags": [],  # To be filled by ai_generate_tags
     }
 
     # Temp: simple check for mentioned card codes in raw_text to assign as source_card_code
     # A real version would use more robust NLP/AI.
     # Example: Look for "[01001]" or "card 01001"
     import re
+
     card_code_match = re.search(r"\[(\d{5})\]|card (\d{5})", raw_text)
     if card_code_match:
         actual_code = card_code_match.group(1) or card_code_match.group(2)
         standard_ruling["source_card_code"] = actual_code
-
 
     if extracted_qa:
         standard_ruling["ruling_type"] = "QUESTION_ANSWER"
@@ -145,38 +161,41 @@ def convert_external_ruling_to_standard_format(external_ruling: Dict[str, Any]) 
 
 # --- Main Processing Logic ---
 
-def enrich_rulings(rulings_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    enriched_rulings = []
+
+def enrich_rulings(rulings_data: list[dict[str, any]]) -> list[dict[str, any]]:
+    enriched_rulings: list[dict[str, any]] = []
     for ruling_dict in rulings_data:
         # Make a copy to avoid modifying the original list of dicts in-place if it's reused
-        enriched_ruling = ruling_dict.copy() # Works淺copy for dicts of primitives/nested dicts
+        enriched_ruling = ruling_dict.copy()  # Works copy for dicts of primitives/nested dicts
 
         # Ensure basic structure for provenance if it's somehow missing (e.g. from external)
         if "provenance" not in enriched_ruling:
             enriched_ruling["provenance"] = {}
-        if "source_card_code" not in enriched_ruling: # Should be present from conversion
-            enriched_ruling["source_card_code"] = DEFAULT_SOURCE_CARD_CODE_EXTERNAL
-
+        if "source_card_code" not in enriched_ruling:  # Should be present from conversion
+            enriched_ruling["source_card_code"] = constants.DEFAULT_SOURCE_CARD_CODE_EXTERNAL
 
         # Determine the best text to send to AI (question+answer, or text)
         text_for_ai = ""
         if enriched_ruling.get("question") and enriched_ruling.get("answer"):
             text_for_ai = f"Q: {enriched_ruling['question']} A: {enriched_ruling['answer']}"
         elif enriched_ruling.get("text"):
-            text_for_ai = enriched_ruling['text']
+            text_for_ai = enriched_ruling["text"]
         elif enriched_ruling.get("original_html_snippet"):
             # For already processed ArkhamDB rulings, original_html_snippet is HTML.
             # For external rulings, it's raw text.
             # We need plain text for AI.
             soup = BeautifulSoup(enriched_ruling["original_html_snippet"], "html.parser")
-            text_for_ai = soup.get_text(separator=' ', strip=True)
+            text_for_ai = soup.get_text(separator=" ", strip=True)
 
-        if not text_for_ai and enriched_ruling.get("original_html_snippet"): # Fallback for external that might be plain
-             text_for_ai = enriched_ruling["original_html_snippet"]
-
+        if not text_for_ai and enriched_ruling.get(
+            "original_html_snippet"
+        ):  # Fallback for external that might be plain
+            text_for_ai = enriched_ruling["original_html_snippet"]
 
         if not text_for_ai:
-            logging.warning(f"Skipping AI enrichment for ruling ID {enriched_ruling.get('id')} due to no text.")
+            logging.warning(
+                f"Skipping AI enrichment for ruling ID {enriched_ruling.get('id')} due to no text."
+            )
             enriched_rulings.append(enriched_ruling)
             continue
 
@@ -184,16 +203,18 @@ def enrich_rulings(rulings_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         enriched_ruling["related_card_codes"] = ai_get_related_cards(
             text_for_ai,
             enriched_ruling["source_card_code"],
-            enriched_ruling.get("related_card_codes", [])
+            enriched_ruling.get("related_card_codes", []),
         )
 
         # 2. Provenance Mining (Example: only if source_type is generic or needs detail)
         # This is a simplistic trigger; real logic would be more nuanced.
-        if enriched_ruling.get("provenance", {}).get("source_type") == "arkhamdb_faq" and \
-           not enriched_ruling.get("provenance", {}).get("source_name", "").startswith("FAQ v"):
+        if enriched_ruling.get("provenance", {}).get(
+            "source_type"
+        ) == "arkhamdb_faq" and not enriched_ruling.get("provenance", {}).get(
+            "source_name", ""
+        ).startswith("FAQ v"):
             enriched_ruling["provenance"] = ai_extract_provenance_details(
-                text_for_ai,
-                enriched_ruling.get("provenance", {})
+                text_for_ai, enriched_ruling.get("provenance", {})
             )
 
         # 3. Q&A Extraction (Illustrative: if type is CLARIFICATION but looks like Q&A)
@@ -202,10 +223,10 @@ def enrich_rulings(rulings_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         if enriched_ruling.get("ruling_type") == "CLARIFICATION":
             extracted_qa = ai_extract_q_and_a(text_for_ai)
             if extracted_qa:
-                enriched_ruling["ruling_type"] = "QUESTION_ANSWER" # Change type
+                enriched_ruling["ruling_type"] = "QUESTION_ANSWER"  # Change type
                 enriched_ruling["question"] = extracted_qa["question"]
                 enriched_ruling["answer"] = extracted_qa["answer"]
-                enriched_ruling["text"] = None # Clear out old text field
+                enriched_ruling["text"] = None  # Clear out old text field
 
         # 4. Tag Generation
         enriched_ruling["tags"] = ai_generate_tags(
@@ -216,36 +237,45 @@ def enrich_rulings(rulings_data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         enriched_rulings.append(enriched_ruling)
     return enriched_rulings
 
-def main():
-    processed_input_path = Path("../assets/processed_rulings_v2.json")
-    external_input_path = Path("../assets/raw_external_rulings.json")
-    output_path = Path("../assets/processed_rulings_v3_ai_enriched.json")
 
-    all_rulings_to_process = []
+def main() -> None:
+    processed_input_path = constants.PROCESSED_RULINGS_V2_PATH
+    external_input_path = constants.RAW_EXTERNAL_RULINGS_PATH
+    output_path = constants.PROCESSED_RULINGS_V3_AI_PATH
+
+    all_rulings_to_process: list[dict[str, any]] = []
 
     # Load already processed rulings
     if not processed_input_path.exists():
-        logging.warning(f"Processed rulings file not found: {processed_input_path}. Starting with empty list.")
+        logging.warning(
+            f"Processed rulings file not found: {processed_input_path}. Starting with empty list."
+        )
     else:
         try:
-            with processed_input_path.open('r', encoding='utf-8') as f:
+            with processed_input_path.open("r", encoding="utf-8") as f:
                 all_rulings_to_process.extend(json.load(f))
-            logging.info(f"Loaded {len(all_rulings_to_process)} rulings from {processed_input_path}")
+            logging.info(
+                f"Loaded {len(all_rulings_to_process)} rulings from {processed_input_path}"
+            )
         except json.JSONDecodeError as e:
             logging.error(f"Error decoding JSON from {processed_input_path}: {e}")
             return
-        except IOError as e:
+        except (OSError, IOError) as e:
             logging.error(f"Error reading from {processed_input_path}: {e}")
             return
 
     # Load and convert external rulings
     if not external_input_path.exists():
-        logging.warning(f"External rulings file not found: {external_input_path}. No external rulings will be added.")
+        logging.warning(
+            f"External rulings file not found: {external_input_path}. No external rulings will be added."
+        )
     else:
         try:
-            with external_input_path.open('r', encoding='utf-8') as f:
+            with external_input_path.open("r", encoding="utf-8") as f:
                 raw_external_data = json.load(f)
-            logging.info(f"Loaded {len(raw_external_data)} raw external entries from {external_input_path}")
+            logging.info(
+                f"Loaded {len(raw_external_data)} raw external entries from {external_input_path}"
+            )
 
             converted_external_rulings = []
             for ext_ruling_dict in raw_external_data:
@@ -253,24 +283,30 @@ def main():
                 if standardized:
                     converted_external_rulings.append(standardized)
 
-            logging.info(f"Converted {len(converted_external_rulings)} external rulings to standard format.")
+            logging.info(
+                f"Converted {len(converted_external_rulings)} external rulings to standard format."
+            )
             all_rulings_to_process.extend(converted_external_rulings)
 
         except json.JSONDecodeError as e:
             logging.error(f"Error decoding JSON from {external_input_path}: {e}")
-        except IOError as e:
+        except (OSError, IOError) as e:
             logging.error(f"Error reading from {external_input_path}: {e}")
-
 
     # Perform AI enrichment on the combined list
     final_rulings = enrich_rulings(all_rulings_to_process)
 
     try:
-        with output_path.open('w', encoding='utf-8') as f:
-            json.dump(final_rulings, f, indent=2, ensure_ascii=False, default=str) # Add default=str for any non-serializable types like datetime
-        logging.info(f"Successfully enriched a total of {len(final_rulings)} rulings and saved to {output_path}")
-    except IOError as e:
+        with output_path.open("w", encoding="utf-8") as f:
+            json.dump(
+                final_rulings, f, indent=2, ensure_ascii=False, default=str
+            )  # Add default=str for any non-serializable types like datetime
+        logging.info(
+            f"Successfully enriched a total of {len(final_rulings)} rulings and saved to {output_path}"
+        )
+    except OSError as e:
         logging.error(f"Error writing enriched rulings to {output_path}: {e}")
+
 
 if __name__ == "__main__":
     main()

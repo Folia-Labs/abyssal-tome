@@ -8,7 +8,6 @@ from pydantic import ValidationError
 
 from scripts.process_new_format import Ruling, RulingType, process_ruling_html
 
-# noqa: S101
 
 def test_process_ruling_html_empty_input() -> None:
     empty_soup = BeautifulSoup("", "html.parser")
@@ -68,19 +67,17 @@ def test_process_ruling_html_various_types(input_html, expected_ruling_types) ->
 def test_question_ruling_with_hypothesis(question, answer) -> None:
     with contextlib.suppress(ValidationError):
         ruling = Ruling(ruling_type=RulingType.QUESTION, question=question, answer=answer)
-        assert ruling.question == question  # noqa: S101
-        assert ruling.answer == answer  # noqa: S101
+        assert ruling.question == question
+        assert ruling.answer == answer
 
 
 @given(
     content=lists(text(), min_size=1),
-    ruling_type=sampled_from(
-        [RulingType.ERRATA, RulingType.CLARIFICATION, RulingType.NOTE]
-    ),
+    ruling_type=sampled_from([RulingType.ERRATA, RulingType.CLARIFICATION, RulingType.NOTE]),
 )
 def test_ruling_content_with_hypothesis(content: list[str], ruling_type: RulingType) -> None:
     ruling = Ruling(ruling_type=ruling_type, content=content)
     assert ruling.ruling_type == ruling_type
     assert ruling.content == content
-    assert ruling.question is None  # noqa: S101
+    assert ruling.question is None
     assert ruling.answer is None
