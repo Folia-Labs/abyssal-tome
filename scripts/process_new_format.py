@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO)
 
 # Constants moved to constants.py, except for TEXT_TO_RULING_TYPE
 # which are tightly coupled with this script's local RulingType enum.
-from abyssal_tome import constants # Updated import path
+from abyssal_tome import constants  # Updated import path
 
 # TAG_TO_LETTER moved to constants.py
 # TAG_TO_LETTER = {
