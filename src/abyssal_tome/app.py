@@ -294,14 +294,20 @@ async def retrieve_image_binary(image_url: str) -> str:
     Returns:
         str: Base64-encoded ASCII string of the image content, or an empty string if retrieval fails.
     """
-    image_response = requests.get(image_url, timeout=10) # Added timeout
-    if image_response.status_code != 200:
-        logging.error(f"Image URL: {image_url} returned status code: {image_response.status_code}")
-        return "" # Return empty string or placeholder
-    else:
-        logging.info(f"Image URL: {image_url} returned status code: {image_response.status_code}")
-    return b64encode(image_response.content).decode("ascii")
+    import aiohttp
 
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get(image_url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                if response.status != 200:
+                    logging.error(f"Image URL: {image_url} returned status code: {response.status}")
+                    return ""
+                logging.info(f"Image URL: {image_url} returned status code: {response.status}")
+                image_data = await response.read()
+                return b64encode(image_data).decode("ascii")
+        except Exception as e:
+            logging.error(f"Failed to retrieve image from {image_url}: {e}")
+            return ""
 async def retrieve_image_url(card_id: str) -> str | None: # Return None if not found
     """
     Fetches the image URL for a card using its card ID via a GraphQL query.
