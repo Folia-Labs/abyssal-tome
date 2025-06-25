@@ -93,7 +93,7 @@ def load_json_data() -> dict:
     logging.info("JSON data loaded successfully.")
     return data
 
-async def highlight_text(span: ft.TextSpan, search_term: str) -> list[ft.TextSpan]:
+def highlight_text(span: ft.TextSpan, search_term: str) -> list[ft.TextSpan]:
     """
     Highlight occurrences of a search term within a TextSpan, returning new spans with background color applied to matches.
     
@@ -150,7 +150,6 @@ async def highlight_text(span: ft.TextSpan, search_term: str) -> list[ft.TextSpa
         spans.append(end_span)
 
     return spans if spans else [span] # Return original span if no matches, to keep content
-
 async def highlight_spans(text_spans: list[ft.TextSpan], search_term: str) -> list[ft.TextSpan]:
     """
     Highlights all occurrences of a search term within a list of TextSpan objects.
