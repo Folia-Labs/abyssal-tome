@@ -42,7 +42,7 @@ class OpinionProvenanceModel(BaseModel):
 
 class OpinionatedRulingModel(BaseModel):
     opinion_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    applies_to_rulin_id: str # Typo here, should be applies_to_ruling_id
+    applies_to_ruling_id: str
     opinion_text: str
     opinion_summary: str | None = None
     provenance: OpinionProvenanceModel
@@ -276,4 +276,4 @@ if __name__ == "__main__": # Restoring this block
         logging.info(f"Generated opinion_schema.json at {schema_file_path.resolve()}")
     except Exception as e:
         logging.error(f"Error generating opinion_schema.json: {e}", exc_info=True)
-```
+# (The trailing

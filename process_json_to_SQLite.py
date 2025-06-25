@@ -43,7 +43,8 @@ def validate_data(data, schema) -> None:
 
 
 # Function to process and insert data into the database
-def process_and_insert_data(data) -> None:
+-def process_and_insert_data(data) -> None:
++def process_and_insert_data(data: list) -> None:
     """
     Validates and inserts a list of ruling data items into the database.
     
@@ -60,7 +61,9 @@ def process_and_insert_data(data) -> None:
             card_name=item["card_name"],
             type=item["type"],
             text=item["text"],
-            source_updated=datetime.datetime.strptime(item["source"]["updated"], "%d %B %Y")
+            source_updated=datetime.datetime.strptime(
+                item["source"]["updated"], "%d %B %Y"
+            ).replace(tzinfo=datetime.timezone.utc)
             if item["source"]["updated"]
             else None,
             source_type=item["source"]["type"],
@@ -75,8 +78,7 @@ with open("assets/processed_data.json") as data_file:
 
 # Process and insert the data into the database
 for _card_name, rulings in processed_data.items():
-    for ruling in rulings:
-        process_and_insert_data(ruling)
+    process_and_insert_data(rulings)
 
 # Close the database connection
 db.close()

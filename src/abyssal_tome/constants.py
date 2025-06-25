@@ -92,12 +92,6 @@ OLD_PROCESSED_DATA_PATH = Path('../assets/processed_data.json') # Assuming relat
 
 # Add other general constants here if they arise
 # For example, output file paths for processed data could also be constants:
-PROCESSED_RULINGS_V2_PATH = Path("../assets/processed_rulings_v2.json")
-PROCESSED_RULINGS_V3_AI_PATH = Path("../assets/processed_rulings_v3_ai_enriched.json")
-RAW_EXTERNAL_RULINGS_PATH = Path("../assets/raw_external_rulings.json")
-OPINIONATED_RULINGS_PATH = Path("../assets/opinionated_rulings.json")
-GENERATED_SCHEMAS_DIR = Path("../assets/schemas") # Restoring this line
-
 # Note: TEXT_TO_RULING_TYPE and TAG_TO_LETTER are kept in process_new_format.py
 # as they are tightly coupled with the RulingType Enum and specific logic within that script.
 # Moving RulingType enum here could create circular dependencies if other scripts also need it
@@ -107,4 +101,3 @@ GENERATED_SCHEMAS_DIR = Path("../assets/schemas") # Restoring this line
 # --- Flet App specific constants (from main.py/app.py) ---
 DEFAULT_FLET_PATH = ""
 DEFAULT_FLET_PORT = 8502
-```
