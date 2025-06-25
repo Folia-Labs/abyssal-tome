@@ -607,7 +607,40 @@ async def main_flet_app(page: ft.Page) -> None: # Renamed main to main_flet_app
     page.title = "FAQ This!"
     page.fonts = {"Arkham Icons": "/fonts/arkham-icons.otf"}
     # ... (theme setup remains the same) ...
-    page.theme = ft.Theme(color_scheme=ft.ColorScheme(primary="#ff436915",on_primary="#ffffffff",primary_container="#ffc2f18d",on_primary_container="#ff0f2000",secondary="#ff57624a",on_secondary="#ffffffff",secondary_container="#ffdbe7c8",on_secondary_container="#ff151e0b",tertiary="#ff386663",on_tertiary="#ffffffff",tertiary_container="#ffbbece8",on_tertiary_container="#ff00201f",error="#ffba1a1a",error_container="#ffffdad6",on_error="#ffffffff",on_error_container="#ff410002",background="#fffdfcf5",on_background="#ff1b1c18",surface="#fffdfcf5",on_surface="#ff1b1c18",surface_variant="#ffe1e4d5",on_surface_variant="#ff44483d",outline="#ff75796c",on_inverse_surface="#fff2f1e9",inverse_surface="#ff30312c",inverse_primary="#ffa7d474",shadow="#ff000000",surface_tint="#ff436915",outline_variant="#ffc5c8ba",scrim="#ff000000",))
+    page.theme = ft.Theme(
+        color_scheme=ft.ColorScheme(
+            primary="#ff436915",
+            on_primary="#ffffffff",
+            primary_container="#ffc2f18d",
+            on_primary_container="#ff0f2000",
+            secondary="#ff57624a",
+            on_secondary="#ffffffff",
+            secondary_container="#ffdbe7c8",
+            on_secondary_container="#ff151e0b",
+            tertiary="#ff386663",
+            on_tertiary="#ffffffff",
+            tertiary_container="#ffbbece8",
+            on_tertiary_container="#ff00201f",
+            error="#ffba1a1a",
+            error_container="#ffffdad6",
+            on_error="#ffffffff",
+            on_error_container="#ff410002",
+            background="#fffdfcf5",
+            on_background="#ff1b1c18",
+            surface="#fffdfcf5",
+            on_surface="#ff1b1c18",
+            surface_variant="#ffe1e4d5",
+            on_surface_variant="#ff44483d",
+            outline="#ff75796c",
+            on_inverse_surface="#fff2f1e9",
+            inverse_surface="#ff30312c",
+            inverse_primary="#ffa7d474",
+            shadow="#ff000000",
+            surface_tint="#ff436915",
+            outline_variant="#ffc5c8ba",
+            scrim="#ff000000",
+        )
+    )
 
     page_content_ref = ft.Ref[ft.Column]() # Use Ref
     json_data = load_json_data()
