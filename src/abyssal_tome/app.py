@@ -179,73 +179,10 @@ def append_span(spans_list: list[ft.TextSpan], text_content: str, style: ft.Text
     if text_content:
         spans_list.append(ft.TextSpan(text=text_content, style=style or ft.TextStyle(), on_click=on_click_handler))
 
-async def replace_special_tags(page: ft.Page, text_input: str) -> list[ft.TextSpan]: # Renamed text to text_input
-    """
-    Parses input text for special tags, markdown styles, and links, converting them into styled TextSpan objects for display.
-    
-    Detects and processes card links, icon tags, and bold/italic markdown, applying appropriate styles and click handlers. Returns a list of styled TextSpan objects representing the formatted text.
-    """
-    logging.info("Replacing special tags in ruling text.")
-    spans_output = [] # Renamed spans to spans_output
-    if not text_input:
-        return spans_output
-
-    remaining_text = text_input
-    original_text_for_logging = text_input # For logging
-
-    while match := ALL_PATTERN.search(remaining_text):
-        start, end = match.span()
-        if start > 0:
-            spans_output.append(ft.TextSpan(text=remaining_text[:start]))
-
-        mid_span = ft.TextSpan()
-        groups = match.groupdict()
-
-        current_text_content = ""
-        matched_group_text = None # To hold text from bold/italic groups
-
-        if (link_text := groups.get("link_text")) and (link_url := groups.get("link_url")):
-            card_id = link_url.split("/")[-1]
-            current_text_content = link_text
-            mid_span.style = ft.TextStyle(decoration=ft.TextDecoration.UNDERLINE, color=ft.colors.ON_SURFACE)
-            mid_span.on_click = lambda event, card_code=card_id: asyncio.create_task(on_card_click(event, page, card_code))
-        elif tag_icon := groups.get("tag"): # Renamed 'tag' to 'tag_icon'
-            current_text_content = TAG_TO_LETTER[tag_icon.replace("[", "").replace("]", "")]
-            mid_span.style = ft.TextStyle(size=20, font_family="Arkham Icons")
-            mid_span.data = tag_icon
-
-        # Check styling groups, these might contain the actual text or wrap other text
-        if bold_italic_text := groups.get("bold_italic"):
-            matched_group_text = bold_italic_text
-            style = mid_span.style or ft.TextStyle()
-            style.weight = ft.FontWeight.BOLD
-            style.italic = True
-            mid_span.style = style
-        elif bolded_text := groups.get("bolded"):
-            matched_group_text = bolded_text
-            style = mid_span.style or ft.TextStyle()
-            style.weight = ft.FontWeight.BOLD
-            mid_span.style = style
-        elif italics_text := groups.get("italics"):
-            matched_group_text = italics_text
-            style = mid_span.style or ft.TextStyle()
-            style.italic = True
-            mid_span.style = style
-
-        mid_span.text = matched_group_text if matched_group_text is not None else current_text_content or remaining_text[start:end]
-
-        spans_output.append(mid_span)
-        remaining_text = remaining_text[end:]
-
-    if remaining_text:
-        spans_output.append(ft.TextSpan(text=remaining_text))
-
-    if not spans_output and original_text_for_logging:
-        logging.error(f"No spans were created for input text: {original_text_for_logging[:200]}...")
-    elif not spans_output and not original_text_for_logging:
-        logging.info("No spans created because input text was empty.")
-    return spans_output
-
+-async def replace_special_tags(page: ft.Page, text_input: str) -> list[ft.TextSpan]:
++def replace_special_tags(page: ft.Page, text_input: str) -> list[ft.TextSpan]:
+     """
+     Parses input text for special tags, markdown styles, and links, converting them into styled TextSpan objects for display.
 async def on_card_click(event: ft.ControlEvent, page: ft.Page, card_id: str) -> None:
     """
     Displays a modal dialog with the card image when a card is clicked.
