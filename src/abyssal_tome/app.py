@@ -54,19 +54,13 @@ class QAType(StrEnum):
     QUESTION = "question"
     ANSWER = "answer"
 
-TAG_TO_LETTER = {
-    "willpower": "p", "agility": "a", "combat": "c", "intellect": "b",
-    "skull": "k", "cultist": "l", "tablet": "q", "elderthing": "n",
-    "autofail": "m", "eldersign": "o", "bless": "v", "curse": "w",
-    "frost": "x", "reaction": "!", "unique": "s", "mystic": "g",
-    "guardian": "f", "seeker": "h", "rogue": "d", "survivor": "e",
-    "free": "j", "action": "i",
-}
+# Use TAG_TO_LETTER from constants to ensure consistency
+TAG_TO_LETTER = constants.TAG_TO_LETTER
 
 LINK_PATTERN = reg.compile(r"\[(?P<link_text>[^\[\]]+)\](?=\([^\)]+\))\((?P<link_url>[^\(\)]+)\)")
 TAG_PATTERN = reg.compile(
     r"(?P<tag>"
-    + r"|".join(reg.escape(f"[{tag}]", special_only=True) for tag in TAG_TO_LETTER)
+    + r"|".join(reg.escape(f"[{tag}]", special_only=True) for tag in constants.TAG_TO_LETTER)
     + ")"
 )
 BOLD_ITALIC_PATTERN = reg.compile(r"\*\*\*(?P<bold_italic>.*?)\*\*\*")
