@@ -2470,7 +2470,7 @@ se_types = [
     "scenario_header",
     "story",
 ]
-se_cards = dict(zip(se_types, [[] for _ in range(len(se_types))], strict=False))
+se_cards = dict(zip(se_types, [[] for _ in range(len(se_types))], strict=True))
 result_set = set()
 
 
