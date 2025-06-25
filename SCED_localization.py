@@ -7,29 +7,30 @@
 # Promos, LOL, TSK, MTT, FOF, no translation
 
 import argparse
+import copy
 import csv
+import glob
+import importlib
+import inspect
 import json
 import os
-import sys
+import re
 import shutil
 import subprocess
-import re
+import sys
+import urllib.request
+import uuid
+import warnings
+from collections.abc import Callable
 from contextlib import suppress
 from enum import Enum, auto
 from functools import partial
 from pathlib import Path
-from typing import Callable, Any
+from typing import Any
 
-import inspect
-import importlib
-import urllib.request
 import dropbox
-import uuid
-import glob
-import copy
-import warnings
-from PIL import Image
 from bs4 import BeautifulSoup, MarkupResemblesLocatorWarning
+from PIL import Image
 
 
 class SEProperties(Enum):
@@ -217,9 +218,7 @@ steps = ["translate", "generate", "pack", "upload", "update"]
 langs = ["es", "de", "it", "fr", "ko", "uk", "pl", "ru", "zh_TW", "zh_CN"]
 
 parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--lang", default="zh_CN", choices=langs, help="The language to translate into"
-)
+parser.add_argument("--lang", default="zh_CN", choices=langs, help="The language to translate into")
 parser.add_argument(
     "--se-executable",
     default=r"C:\Program Files\StrangeEons\bin\eons.exe",
@@ -227,7 +226,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--se-preferences",
-    default=rf'{os.getenv("APPDATA")}\StrangeEons3\preferences',
+    default=rf"{os.getenv('APPDATA')}\StrangeEons3\preferences",
     help="The Strange Eons preferences file path",
 )
 parser.add_argument(
@@ -286,8 +285,7 @@ def get_lang_code_region():
     parts = args.lang.split("_")
     if len(parts) > 1:
         return parts[0], parts[1]
-    else:
-        return parts[0], ""
+    return parts[0], ""
 
 
 def import_lang_module():
@@ -396,9 +394,7 @@ def get_se_agility(card):
 
 def get_se_skill(card, index):
     skill_list = [
-        skill.capitalize()
-        for skill in SKILL_NAMES
-        for _ in range(card.get(f"skill_{skill}", 0))
+        skill.capitalize() for skill in SKILL_NAMES for _ in range(card.get(f"skill_{skill}", 0))
     ]
     # Add 'None' to fill the list to 6 elements.
     skill_list += ["None"] * (6 - len(skill_list))
@@ -502,14 +498,12 @@ def is_se_act_image_back(card):
     ]
 
 
-def is_se_bottom_line_transparent(card, sheet):
+def is_se_bottom_line_transparent(card, sheet) -> bool:
     if card["type_code"] == "enemy":
         return True
     if sheet == 0 and (is_se_agenda_image_front(card) or is_se_act_image_front(card)):
         return True
-    if sheet == 1 and (is_se_agenda_image_back(card) or is_se_act_image_back(card)):
-        return True
-    return False
+    return bool(sheet == 1 and (is_se_agenda_image_back(card) or is_se_act_image_back(card)))
 
 
 def get_se_illustrator(card, sheet):
@@ -521,7 +515,7 @@ def get_se_illustrator(card, sheet):
 def get_se_copyright(card, sheet) -> str:
     if is_se_bottom_line_transparent(card, sheet):
         return ""
-    return f'<cop> {PACK_YEAR_MAP.get(card.get("pack_code"), "")} FFG'
+    return f"<cop> {PACK_YEAR_MAP.get(card.get('pack_code'), '')} FFG"
 
 
 def get_se_pack(card, sheet):
@@ -1147,11 +1141,11 @@ def get_se_encounter_number(card, sheet):
     return str(get_field(card, "encounter_position", 0))
 
 
-def get_se_encounter_front_visibility(card):
+def get_se_encounter_front_visibility(card) -> str:
     return "0" if card["code"] in ["06015a", "06015b"] else "1"
 
 
-def get_se_encounter_back_visibility(card):
+def get_se_encounter_back_visibility(card) -> str:
     return (
         "0"
         if card["code"]
@@ -1186,7 +1180,7 @@ def get_se_doom(card):
     return str(doom)
 
 
-def get_se_doom_comment(card):
+def get_se_doom_comment(card) -> str:
     # NOTE: Special cases the cards with an asterisk comment on the doom or clue.
     return "1" if card["code"] in ["04212"] else "0"
 
@@ -1207,23 +1201,20 @@ def get_se_shroud(card):
     return str(shroud)
 
 
-def get_se_per_investigator(card):
+def get_se_per_investigator(card) -> str:
     # NOTE: Location and act cards default to use per-investigator clue count, unless clue count is 0, variable (-2) or 'clues_fixed' is specified.
     if card["type_code"] in ["location", "act"]:
         return (
-            "0"
-            if get_field(card, "clues", 0) in [0, -2] or card.get("clues_fixed", False)
-            else "1"
+            "0" if get_field(card, "clues", 0) in [0, -2] or card.get("clues_fixed", False) else "1"
         )
-    else:
-        return "1" if card.get("health_per_investigator", False) else "0"
+    return "1" if card.get("health_per_investigator", False) else "0"
 
 
 def get_se_progress_number(card):
     return str(get_field(card, "stage", 0))
 
 
-def get_se_progress_letter(card):
+def get_se_progress_letter(card) -> str:
     # NOTE: Special case agenda and act letters.
     if card["code"] in [
         "53029",
@@ -1270,20 +1261,16 @@ def is_se_progress_reversed(card):
     return card["code"] in ["03278", "03279a", "03279b", "03280", "03281"]
 
 
-def get_se_progress_direction(card):
+def get_se_progress_direction(card) -> str:
     # NOTE: Special case agenda and act direction.
     if is_se_progress_reversed(card):
         return "Reversed"
     return "Standard"
 
 
-def get_se_unique(card):
+def get_se_unique(card) -> str:
     # NOTE: ADB doesn't specify 'is_unique' property for investigator cards but they are always unique.
-    return (
-        "1"
-        if card.get("is_unique", False) or card["type_code"] == "investigator"
-        else "0"
-    )
+    return "1" if card.get("is_unique", False) or card["type_code"] == "investigator" else "0"
 
 
 def get_se_name(name):
@@ -1355,10 +1342,7 @@ def get_se_markup(rule):
     for a, b in markup:
         rule = re.sub(a, b, rule, flags=re.I)
     # NOTE: Format traits. We avoid the buggy behavior of </size> in SE instead we set font size by relative percentage, 0.9 * 0.33 * 3.37 = 1.00089.
-    rule = re.sub(
-        r"\[\[([^\]]*)\]\]", r"<size 90%><t>\1</t><size 33%> <size 337%>", rule
-    )
-    return rule
+    return re.sub(r"\[\[([^\]]*)\]\]", r"<size 90%><t>\1</t><size 33%> <size 337%>", rule)
 
 
 def get_se_rule(rule):
@@ -1372,9 +1356,7 @@ def get_se_rule(rule):
     # NOTE: Convert <p> tag to newline characters.
     rule = rule.replace("</p><p>", "\n").replace("<p>", "").replace("</p>", "")
     # NOTE: Format bullet icon at the start of the line.
-    rule = "\n".join(
-        [re.sub(r"^[\-—] ", "<bul> ", line.strip()) for line in rule.split("\n")]
-    )
+    rule = "\n".join([re.sub(r"^[\-—] ", "<bul> ", line.strip()) for line in rule.split("\n")])
     # NOTE: We intentionally add a space at the end to hack around a problem with SE scenario card layout. If we don't add this space,
     # the text on scenario cards doesn't automatically break lines.
     rule = f"{rule} " if rule.strip() else ""
@@ -1465,14 +1447,14 @@ def is_return_to_scenario(card):
     )
 
 
-def get_se_front_template(card):
+def get_se_front_template(card) -> str:
     # NOTE: Use scenario template of story card for return to scenarios. Also for some special cards.
     if is_return_to_scenario(card) or card["code"] in ["07062a"]:
         return "Chaos"
     return "Story"
 
 
-def get_se_back_template(card):
+def get_se_back_template(card) -> str:
     # NOTE: Use scenario template of story card for return to scenarios.
     if is_return_to_scenario(card):
         return "ChaosFull"
@@ -1528,13 +1510,13 @@ def get_se_back_header(card):
     # NOTE: Back header is used by scenario card with a non-standard header. We intentionally add a space at the end to work around a formatting issue in SE.
     # If we don't add the extra space, SE doesn't perform line breaking.
     header = get_field(card, "back_text", "")
-    header = [line.strip() for line in header.split("\n")][0] + " "
+    header = next(line.strip() for line in header.split("\n")) + " "
     return get_se_header(header)
 
 
 def get_se_paragraph_line(card, text, flavor, index):
     # NOTE: Header is determined by 'b' tag ending with colon or followed by a newline (except for resolution text).
-    def is_header(elem):
+    def is_header(elem) -> bool:
         if elem.name == "b":
             elem_text = elem.get_text().strip()
             if elem_text and elem_text[-1] in (":", "："):
@@ -1597,7 +1579,7 @@ def get_se_paragraph_line(card, text, flavor, index):
         soup = BeautifulSoup(paragraph, "html.parser")
 
         # NOTE: Remove leading whitespace before checking for header or flavor.
-        def strip_leading(node):
+        def strip_leading(node) -> None:
             for child in node.contents:
                 if not str(child).strip():
                     child.extract()
@@ -1634,8 +1616,7 @@ def get_se_paragraph_line(card, text, flavor, index):
 
     if index < len(parsed_paragraphs):
         return parsed_paragraphs[index]
-    else:
-        return "", "", ""
+    return "", "", ""
 
 
 def get_se_front_paragraph_line(card, index):
@@ -1834,9 +1815,7 @@ def get_dynamic_assignments(card, metadata, image_sheet):
 
 def get_final_card(assignments):
     final_card = {
-        key: value
-        for value, keys in assignments[AssignmentType.STATIC].items()
-        for key in keys
+        key: value for value, keys in assignments[AssignmentType.STATIC].items() for key in keys
     }
     final_card.update(
         {key: method() for method, key in assignments[AssignmentType.DYNAMIC].items()}
@@ -1844,24 +1823,18 @@ def get_final_card(assignments):
     return final_card
 
 
-def set_property_assignments(final_card, property_var_by_key, SE_PROPERTY_COUNTS):
+def set_property_assignments(final_card, property_var_by_key, SE_PROPERTY_COUNTS) -> None:
     for property_key, val in SE_PROPERTY_COUNTS.values():
         property_method, property_name_pattern, property_count = val
         property_args = property_var_by_key[property_key]
         for i in range(property_count):
             m_arg, add_args = (
-                property_args
-                if isinstance(property_args, tuple)
-                else (property_args, ())
+                property_args if isinstance(property_args, tuple) else (property_args, ())
             )
-            final_card[f"${property_name_pattern(i + 1)}"] = property_method(
-                m_arg, *add_args
-            )
+            final_card[f"${property_name_pattern(i + 1)}"] = property_method(m_arg, *add_args)
 
 
-def get_se_card(
-    result_id, card, metadata, image_filename, image_scale, image_move_x, image_move_y
-):
+def get_se_card(result_id, card, metadata, image_filename, image_scale, image_move_x, image_move_y):
     image_sheet = decode_result_id(result_id)[-1]
     property_var_by_key = {
         SEProperties.F_P_HEADER: card,
@@ -1879,9 +1852,7 @@ def get_se_card(
     }
 
     assignments = {
-        AssignmentType.STATIC: get_static_assignments(
-            image_move_x, image_move_y, image_scale
-        ),
+        AssignmentType.STATIC: get_static_assignments(image_move_x, image_move_y, image_scale),
         AssignmentType.DYNAMIC: get_dynamic_assignments(card, metadata, image_sheet),
     }
 
@@ -1893,11 +1864,11 @@ def get_se_card(
     return final_card
 
 
-def ensure_dir(dir):
+def ensure_dir(dir) -> None:
     os.makedirs(dir, exist_ok=True)
 
 
-def recreate_dir(dir):
+def recreate_dir(dir) -> None:
     shutil.rmtree(dir, ignore_errors=True)
     os.makedirs(dir)
 
@@ -1909,16 +1880,14 @@ def download_repo(repo_folder, repo):
     ensure_dir(args.repo_dir)
     repo_name = repo.split("/")[-1]
     repo_folder = f"{args.repo_dir}/{repo_name}"
-    subprocess.run(
-        ["git", "clone", "--quiet", f"https://github.com/{repo}.git", repo_folder]
-    )
+    subprocess.run(["git", "clone", "--quiet", f"https://github.com/{repo}.git", repo_folder])
     return repo_folder
 
 
 ahdb = {}
 
 
-def update_encounter_code(translation):
+def update_encounter_code(translation) -> None:
     for card in translation.values():
         if "linked_card" in card:
             linked_card = card["linked_card"]
@@ -1934,7 +1903,7 @@ def update_encounter_code(translation):
 def download_card(ahdb_id):
     def copy_card_properties(old_card, card, properties):
         temp_card = copy.deepcopy(card)
-        temp_card["code"] = f'{old_card["code"]}-pb'
+        temp_card["code"] = f"{old_card['code']}-pb"
         for prop in properties:
             temp_card[prop] = old_card.get(prop, 0)
         return temp_card
@@ -1950,7 +1919,7 @@ def download_card(ahdb_id):
         def load_folder(folder):
             all_cards = {}
             for data_filename in glob.glob(f"{folder}/**/*.json"):
-                with open(data_filename, "r", encoding="utf-8") as file:
+                with open(data_filename, encoding="utf-8") as file:
                     folder_cards = json.loads(file.read())
                     if not hasattr(folder_cards, "__iter__"):
                         print(f"Error: {data_filename} contains non-iterable.")
@@ -1998,21 +1967,17 @@ def download_card(ahdb_id):
         update_encounter_code(translation)
 
         with open(filename, "w", encoding="utf-8") as file:
-            json_str = json.dumps(
-                list(translation.values()), indent=2, ensure_ascii=False
-            )
+            json_str = json.dumps(list(translation.values()), indent=2, ensure_ascii=False)
             file.write(json_str)
 
     if not len(ahdb):
         print("Processing ArkhamDB data...")
 
         cards = []
-        with open(filename, "r", encoding="utf-8") as file:
+        with open(filename, encoding="utf-8") as file:
             cards.extend(json.loads(file.read()))
         # NOTE: Add taboo cards with -t suffix.
-        with open(
-            f"translations/{lang_code}/taboo.json", "r", encoding="utf-8"
-        ) as file:
+        with open(f"translations/{lang_code}/taboo.json", encoding="utf-8") as file:
             cards.extend(json.loads(file.read()))
         for card in cards:
             ahdb[card["code"]] = card
@@ -2080,9 +2045,7 @@ def download_card(ahdb_id):
     try:
         return ahdb[ahdb_id]
     except KeyError:
-        print(
-            f"Error: Card with ID {ahdb_id} not found in ArkhamDB data", file=sys.stderr
-        )
+        print(f"Error: Card with ID {ahdb_id} not found in ArkhamDB data", file=sys.stderr)
         return None
 
 
@@ -2107,15 +2070,13 @@ def read_url_map():
         return {}, {}
 
     url_id_map = {
-        url: url_id
-        for lang, url_set in url_map.items()
-        for url_id, url in url_set.items()
+        url: url_id for lang, url_set in url_map.items() for url_id, url in url_set.items()
     }
 
     return url_map, url_id_map
 
 
-def write_url_map():
+def write_url_map() -> None:
     ensure_dir(args.cache_dir)
     if url_map is not None:
         with open(args.url_file, "w", encoding="utf-8") as file:
@@ -2136,7 +2097,7 @@ def get_en_url_id(url: str) -> str | None:
     return url_uuid
 
 
-def set_url_id(url_id, url):
+def set_url_id(url_id, url) -> None:
     url_map, _ = read_url_map()
     if args.lang not in url_map:
         url_map[args.lang] = {}
@@ -2144,7 +2105,7 @@ def set_url_id(url_id, url):
     write_url_map()
 
 
-def encode_result_id(url_id, deck_w, deck_h, deck_x, deck_y, rotate, sheet):
+def encode_result_id(url_id, deck_w, deck_h, deck_x, deck_y, rotate, sheet) -> str:
     return f"{url_id}-{deck_w}-{deck_h}-{deck_x}-{deck_y}-{1 if rotate else 0}-{sheet}"
 
 
@@ -2219,7 +2180,7 @@ se_types = [
     "scenario_header",
     "story",
 ]
-se_cards = dict(zip(se_types, [[] for _ in range(len(se_types))]))
+se_cards = dict(zip(se_types, [[] for _ in range(len(se_types))], strict=False))
 result_set = set()
 
 
@@ -2227,37 +2188,26 @@ def get_decks(card_obj):
     return [(int(deck_id), deck) for deck_id, deck in card_obj["CustomDeck"].items()]
 
 
-def translate_sced_card(url, deck_w, deck_h, deck_x, deck_y, is_front, card, metadata):
+def translate_sced_card(url, deck_w, deck_h, deck_x, deck_y, is_front, card, metadata) -> None:
     card_type = card["type_code"]
     rotate = card_type in ["investigator", "agenda", "act"]
     sheet = 0 if is_front else 1
-    result_id = encode_result_id(
-        get_en_url_id(url), deck_w, deck_h, deck_x, deck_y, rotate, sheet
-    )
+    result_id = encode_result_id(get_en_url_id(url), deck_w, deck_h, deck_x, deck_y, rotate, sheet)
     if result_id in result_set:
         return
     print(f"Translating {result_id}...")
 
     if card_type == "asset":
-        if card.get("encounter_code"):
-            se_type = "asset_encounter"
-        else:
-            se_type = "asset"
+        se_type = "asset_encounter" if card.get("encounter_code") else "asset"
     elif card_type == "event":
         se_type = "event"
     elif card_type == "skill":
         se_type = "skill"
     elif card_type == "investigator":
         if card.get("encounter_code") is not None:
-            if is_front:
-                se_type = "investigator_encounter_front"
-            else:
-                se_type = "investigator_encounter_back"
+            se_type = "investigator_encounter_front" if is_front else "investigator_encounter_back"
         else:
-            if is_front:
-                se_type = "investigator_front"
-            else:
-                se_type = "investigator_back"
+            se_type = "investigator_front" if is_front else "investigator_back"
     elif card_type == "treachery":
         if card.get("subtype_code") in ["basicweakness", "weakness"]:
             se_type = "treachery_weakness"
@@ -2275,10 +2225,7 @@ def translate_sced_card(url, deck_w, deck_h, deck_x, deck_y, is_front, card, met
         elif not is_front and is_se_agenda_image_back(card):
             se_type = "image_back"
         else:
-            if is_front:
-                se_type = "agenda_front"
-            else:
-                se_type = "agenda_back"
+            se_type = "agenda_front" if is_front else "agenda_back"
     elif card_type == "act":
         # NOTE: Act with image are special cased.
         if is_front and is_se_act_image_front(card):
@@ -2286,30 +2233,18 @@ def translate_sced_card(url, deck_w, deck_h, deck_x, deck_y, is_front, card, met
         elif not is_front and is_se_act_image_back(card):
             se_type = "image_back"
         else:
-            if is_front:
-                se_type = "act_front"
-            else:
-                se_type = "act_back"
+            se_type = "act_front" if is_front else "act_back"
     elif card_type == "location":
-        if is_front:
-            se_type = "location_front"
-        else:
-            se_type = "location_back"
+        se_type = "location_front" if is_front else "location_back"
     elif card_type == "scenario":
         # NOTE: Return to scenario cards are using story with scenario template.
         if is_return_to_scenario(card):
             se_type = "story"
         else:
-            if is_front:
-                se_type = "scenario_front"
-            else:
-                se_type = "scenario_back"
+            se_type = "scenario_front" if is_front else "scenario_back"
     elif card_type == "story":
         # NOTE: Some scenario cards are recorded as story in ADB, handle them specially here.
-        if card["code"] == "06078" and not is_front:
-            se_type = "scenario_header"
-        else:
-            se_type = "story"
+        se_type = "scenario_header" if card["code"] == "06078" and not is_front else "story"
     else:
         se_type = None
 
@@ -2352,10 +2287,7 @@ def translate_sced_card(url, deck_w, deck_h, deck_x, deck_y, is_front, card, met
     }
     # NOTE: Handle the case where agenda and act direction reversed on cards.
     if se_type in ["agenda_front", "act_front"] and is_se_progress_reversed(card):
-        if se_type == "agenda_front":
-            move_map_se_type = "act_front"
-        else:
-            move_map_se_type = "agenda_front"
+        move_map_se_type = "act_front" if se_type == "agenda_front" else "agenda_front"
     else:
         move_map_se_type = se_type
     image_move_x, image_move_y = move_map[move_map_se_type]
@@ -2374,7 +2306,7 @@ def translate_sced_card(url, deck_w, deck_h, deck_x, deck_y, is_front, card, met
     result_set.add(result_id)
 
 
-def translate_sced_card_object(card_obj, metadata, card):
+def translate_sced_card_object(card_obj, metadata, card) -> None:
     deck_id, deck = get_decks(card_obj)[0]
     deck_w = deck["NumWidth"]
     deck_h = deck["NumHeight"]
@@ -2444,9 +2376,9 @@ def translate_sced_card_object(card_obj, metadata, card):
     else:
         # NOTE: SCED thinks the front side of location is the unrevealed side, which is different from what SE expects. Reverse it here apart from single faced locations.
         # The same goes for some special cards.
-        if (
-            card["type_code"] == "location" and card.get("double_sided", False)
-        ) or card["code"] in ["06078", "06346"]:
+        if (card["type_code"] == "location" and card.get("double_sided", False)) or card[
+            "code"
+        ] in ["06078", "06346"]:
             front_is_front = False
             back_is_front = True
 
@@ -2456,9 +2388,7 @@ def translate_sced_card_object(card_obj, metadata, card):
         }
         if card["code"] in location_map:
             front_card = copy.deepcopy(card)
-            front_card["pack_code"] = download_card(location_map[card["code"]])[
-                "pack_code"
-            ]
+            front_card["pack_code"] = download_card(location_map[card["code"]])["pack_code"]
 
     front_url = deck["FaceURL"]
     translate_front = True
@@ -2538,18 +2468,16 @@ def translate_sced_card_object(card_obj, metadata, card):
             )
         else:
             # NOTE: Even if the back is non-unique, SCED may still use it for interesting cards, e.g. Sophie: It Was All My Fault.
-            translate_sced_card(
-                back_url, 1, 1, 0, 0, back_is_front, back_card, metadata
-            )
+            translate_sced_card(back_url, 1, 1, 0, 0, back_is_front, back_card, metadata)
 
 
-def translate_sced_token_object(token_obj, metadata, card):
+def translate_sced_token_object(token_obj, metadata, card) -> None:
     image_url = token_obj["CustomImage"]["ImageURL"]
     is_front = token_obj["Description"].endswith("Easy/Standard")
     translate_sced_card(image_url, 1, 1, 0, 0, is_front, card, metadata)
 
 
-def translate_sced_object(sced_obj, metadata, card, _1, _2):
+def translate_sced_object(sced_obj, metadata, card, _1, _2) -> None:
     if sced_obj["Name"] in ["Card", "CardCustom"]:
         translate_sced_card_object(sced_obj, metadata, card)
     elif sced_obj["Name"] == "Custom_Token":
@@ -2561,13 +2489,13 @@ def is_translatable(ahdb_id):
     return "-m" not in ahdb_id
 
 
-def process_player_cards(callback: Callable):
+def process_player_cards(callback: Callable) -> None:
     repo_folder = download_repo(args.mod_dir_primary, "argonui/SCED")
     player_folder = f"{repo_folder}/objects/AllPlayerCards.15bb07"
     for filename in os.listdir(player_folder):
         if filename.endswith(".gmnotes"):
             metadata_filename = f"{player_folder}/{filename}"
-            with open(metadata_filename, "r", encoding="utf-8") as metadata_file:
+            with open(metadata_filename, encoding="utf-8") as metadata_file:
                 try:
                     metadata = json.loads(metadata_file.read())
                     ahdb_id = metadata["id"]
@@ -2578,9 +2506,7 @@ def process_player_cards(callback: Callable):
                             continue
                     if eval(args.filter):
                         object_filename = metadata_filename.replace(".gmnotes", ".json")
-                        with open(
-                            object_filename, "r", encoding="utf-8"
-                        ) as object_file:
+                        with open(object_filename, encoding="utf-8") as object_file:
                             card_obj = json.loads(object_file.read())
                         callback(card_obj, metadata, card, object_filename, card_obj)
                         # NOTE: Process card objects with alternative states, e.g. Revised Core investigators.
@@ -2601,7 +2527,7 @@ def process_player_cards(callback: Callable):
                     continue
 
 
-def process_encounter_cards(callback, **kwargs):
+def process_encounter_cards(callback, **kwargs) -> None:
     include_decks = kwargs.get("include_decks", False)
     repo_folder = download_repo(args.mod_dir_secondary, "Chr1Z93/loadable-objects")
     folders = ["campaigns", "scenarios"]
@@ -2618,7 +2544,7 @@ def process_encounter_cards(callback, **kwargs):
             if filename in skip_files:
                 continue
             campaign_filename = f"{campaign_folder}/{filename}"
-            with open(campaign_filename, "r", encoding="utf-8") as object_file:
+            with open(campaign_filename, encoding="utf-8") as object_file:
 
                 def find_encounter_objects(en_obj):
                     if isinstance(en_obj, dict):
@@ -2626,29 +2552,28 @@ def process_encounter_cards(callback, **kwargs):
                             results = find_encounter_objects(en_obj["ContainedObjects"])
                             results.append(en_obj)
                             return results
-                        elif en_obj.get("Name") in [
-                            "Card",
-                            "CardCustom",
-                        ] and en_obj.get("GMNotes", "").startswith("{"):
-                            return [en_obj]
-                        # NOTE: Some scenario cards have tracker box on them and are custom token object instead.
-                        elif (
+                        if (
+                            en_obj.get("Name")
+                            in [
+                                "Card",
+                                "CardCustom",
+                            ]
+                            and en_obj.get("GMNotes", "").startswith("{")
+                        ) or (
                             en_obj.get("Name") == "Custom_Token"
                             and en_obj.get("Nickname") == "Scenario"
                             and en_obj.get("GMNotes", "").startswith("{")
                         ):
                             return [en_obj]
-                        elif "ContainedObjects" in en_obj:
+                        if "ContainedObjects" in en_obj:
                             return find_encounter_objects(en_obj["ContainedObjects"])
-                        else:
-                            return []
-                    elif isinstance(en_obj, list):
+                        return []
+                    if isinstance(en_obj, list):
                         results = []
                         for inner_obj in en_obj:
                             results.extend(find_encounter_objects(inner_obj))
                         return results
-                    else:
-                        return []
+                    return []
 
                 campaign = json.loads(object_file.read())
                 for en_object in find_encounter_objects(campaign):
@@ -2679,7 +2604,7 @@ def process_encounter_cards(callback, **kwargs):
                             continue
 
 
-def write_csv():
+def write_csv() -> None:
     data_dir = "SE_Generator/data"
     recreate_dir(data_dir)
     for se_type in se_types:
@@ -2695,19 +2620,19 @@ def write_csv():
                     writer.writerow(component)
 
 
-def generate_images():
+def generate_images() -> None:
     # NOTE: Update SE font preferences before running the generation script.
     lang_code, _ = get_lang_code_region()
     lang_preferences = f"translations/{lang_code}/preferences"
     print(f"Overwriting with {lang_preferences}...")
     overwrites = {}
-    with open(lang_preferences, mode="r", encoding="utf-8") as file:
+    with open(lang_preferences, encoding="utf-8") as file:
         for line in file:
             if line:
                 key, value = line.split("=")
                 overwrites[key] = value
     lines = []
-    with open(args.se_preferences, mode="r", encoding="utf-8") as file:
+    with open(args.se_preferences, encoding="utf-8") as file:
         for line in file:
             lines.append(line)
     with open(args.se_preferences, mode="w", encoding="utf-8") as file:
@@ -2725,7 +2650,7 @@ def generate_images():
     subprocess.run([args.se_executable, "--glang", args.lang, "--run", se_script])
 
 
-def pack_images():
+def pack_images() -> None:
     deck_images = {}
     url_map, _ = read_url_map()
     for image_dir in Path("SE_Generator/data").glob("*"):
@@ -2735,9 +2660,7 @@ def pack_images():
         for filename in image_dir.glob("*"):
             print(f"Packing {filename=}...")
             result_id = filename.stem
-            deck_url_id, deck_w, deck_h, deck_x, deck_y, rotate, _ = decode_result_id(
-                result_id
-            )
+            deck_url_id, deck_w, deck_h, deck_x, deck_y, rotate, _ = decode_result_id(result_id)
             # NOTE: We use the English version of the url as the base image to pack to avoid repeated saving that reduces quality.
             deck_url = url_map["en"][deck_url_id]
             try:
@@ -2766,12 +2689,10 @@ def pack_images():
     for deck_url_id, deck_image in deck_images.items():
         print(f"Writing {deck_url_id}.jpg...")
         deck_image = deck_image.convert("RGB")
-        deck_image.save(
-            f"{decks_dir}/{deck_url_id}.jpg", progressive=True, optimize=True
-        )
+        deck_image.save(f"{decks_dir}/{deck_url_id}.jpg", progressive=True, optimize=True)
 
 
-def upload_images():
+def upload_images() -> None:
     dbx = dropbox.Dropbox(args.dropbox_token)
     folder = f"/SCED_Localization_Deck_Images_{args.lang}"
     # NOTE: Create a folder if not already exists.
@@ -2797,9 +2718,7 @@ def upload_images():
             # NOTE: Dropbox will reuse the old sharing link if there's already one exist.
             url = dbx.sharing_create_shared_link(image.path_display, short_url=True).url
             # NOTE: Get direct download link from the dropbox sharing link.
-            url = url.replace("?dl=0", "").replace(
-                "www.dropbox.com", "dl.dropboxusercontent.com"
-            )
+            url = url.replace("?dl=0", "").replace("www.dropbox.com", "dl.dropboxusercontent.com")
             url_id = filename.split(".")[0]
             set_url_id(url_id, url)
 
@@ -2807,7 +2726,7 @@ def upload_images():
 updated_files = {}
 
 
-def update_sced_card_object(card_obj, metadata, card, filename, root):
+def update_sced_card_object(card_obj, metadata, card, filename, root) -> None:
     url_map, url_id_map = read_url_map()
     updated_files[filename] = root
     if card:
@@ -2818,7 +2737,7 @@ def update_sced_card_object(card_obj, metadata, card, filename, root):
         if card["code"].endswith("-t"):
             module = import_lang_module()
             taboo_func = getattr(module, "transform_taboo", None)
-            name += f' ({taboo_func() if taboo_func else "Taboo"})'
+            name += f" ({taboo_func() if taboo_func else 'Taboo'})"
         # NOTE: The scenario card names are saved in the 'Description' field in SCED used for the scenario splash screen.
         if card_obj["Nickname"] == "Scenario":
             card_obj["Description"] = name
@@ -2845,7 +2764,7 @@ def update_sced_card_object(card_obj, metadata, card, filename, root):
                 url_object[url_key] = url_map[args.lang][deck_url_id]
 
 
-def update_sced_files():
+def update_sced_files() -> None:
     for filename, root in updated_files.items():
         with open(filename, "w", encoding="utf-8") as file:
             print(f"Writing {filename}...")

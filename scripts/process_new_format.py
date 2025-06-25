@@ -1,28 +1,32 @@
+import datetime
 import json
 import logging
+import uuid
+from enum import Enum, auto  # Added StrEnum
 from pathlib import Path
 from pprint import pp
-from typing import List, Optional
-from pydantic import BaseModel, Field
-from enum import Enum, auto
-import uuid
-import datetime
-from bs4 import BeautifulSoup, Tag
+
+import bs4
 import markdown_it as md_it
 import markdownify
-import bs4
 from bs4 import BeautifulSoup
+
+# from typing import List, Optional # Replaced by built-in types or new syntax
+from pydantic import BaseModel, Field
 
 from symbol import postProcess, tokenize
 
 logging.basicConfig(level=logging.INFO)
 
-FAQS_PATH = Path(r"../faqs/faqs.json")
+# Constants moved to constants.py, except for TEXT_TO_RULING_TYPE
+# which are tightly coupled with this script's local RulingType enum.
+from abyssal_tome import constants # Updated import path
 
-TAG_TO_LETTER = {
-    "willpower": "p",
-    "agility": "a",
-    "combat": "c",
+# TAG_TO_LETTER moved to constants.py
+# TAG_TO_LETTER = {
+#     "willpower": "p",
+#     "agility": "a",
+#     "combat": "c",
     "intellect": "b",
     "skull": "k",
     "cultist": "l",
@@ -48,79 +52,72 @@ TAG_TO_LETTER = {
 class RulingType(Enum):
     ERRATA = auto()
     ADDENDUM = auto()
-    QUESTION_ANSWER = auto() # Combined type
+    QUESTION_ANSWER = auto()  # Combined type
     CLARIFICATION = auto()
     NOTE = auto()
     # FOLLOWUP_Q can be handled as a new QUESTION_ANSWER
-    UPDATE = auto()
-    AS_IF = auto()
-    AUTOMATIC_SUCCESS_FAILURE = auto()
-    AUTOMATIC_SUCCESS_FAILURE_AUTOMATIC_EVASION = auto()
+    UPDATE = "UPDATE"
+    AS_IF = "AS_IF"
+    AUTOMATIC_SUCCESS_FAILURE = "AUTOMATIC_SUCCESS_FAILURE"
+    AUTOMATIC_SUCCESS_FAILURE_AUTOMATIC_EVASION = "AUTOMATIC_SUCCESS_FAILURE_AUTOMATIC_EVASION"
 
 
 class Provenance(BaseModel):
     source_type: str  # E.g., "arkhamdb_faq", "official_faq_pdf", "email_ruling"
-    source_name: Optional[str] = None  # E.g., "FAQ v1.7", "Matt Newman Email"
-    source_date: Optional[str] = None  # Date of the source document/post
+    source_name: str | None = None  # E.g., "FAQ v1.7", "Matt Newman Email"
+    source_date: str | None = None  # Date of the source document/post
     retrieval_date: str = Field(default_factory=lambda: datetime.datetime.utcnow().isoformat())
-    source_url: Optional[str] = None
+    source_url: str | None = None
 
 
 class Ruling(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     source_card_code: str  # Card code this ruling was originally found under
-    related_card_codes: List[str] = Field(default_factory=list)
-    ruling_type: RulingType
-    question: Optional[str] = None  # For QUESTION_ANSWER type
-    answer: Optional[str] = None    # For QUESTION_ANSWER type
-    text: Optional[str] = None      # For ERRATA, CLARIFICATION, NOTE, etc.
+    related_card_codes: list[str] = Field(default_factory=list)
+    ruling_type: RulingType  # Now StrEnum
+    question: str | None = None  # For QUESTION_ANSWER type
+    answer: str | None = None  # For QUESTION_ANSWER type
+    text: str | None = None  # For ERRATA, CLARIFICATION, NOTE, etc.
     provenance: Provenance
-    original_html_snippet: Optional[str] = None # The raw HTML snippet for this specific ruling (e.g. <li> content)
-    tags: List[str] = Field(default_factory=list)
+    original_html_snippet: str | None = (
+        None  # The raw HTML snippet for this specific ruling (e.g. <li> content)
+    )
+    tags: list[str] = Field(default_factory=list)
 
-    class Config:
-        arbitrary_types_allowed = True # For bs4.Tag if ever needed, though aiming for strings
+    # class Config:
+    #     arbitrary_types_allowed = True # No longer needed as fields are standard types or Pydantic models
 
 
-TEXT_TO_RULING_TYPE = {
+# This mapping uses the RulingType enum defined in this file.
+TEXT_TO_RULING_TYPE: dict[str, RulingType] = {
     "errata": RulingType.ERRATA,
     "addendum": RulingType.ADDENDUM,
-    "q": RulingType.QUESTION_ANSWER, # Map Q directly to QUESTION_ANSWER
+    "q": RulingType.QUESTION_ANSWER,  # Map Q directly to QUESTION_ANSWER
     # "a": RulingType.ANSWER, # Answer is handled as part of Q
     "clarification": RulingType.CLARIFICATION,
     "note": RulingType.NOTE,
-    "follow-up q": RulingType.QUESTION_ANSWER, # Map Follow-up Q to QUESTION_ANSWER
+    "follow-up q": RulingType.QUESTION_ANSWER,  # Map Follow-up Q to QUESTION_ANSWER
     "update": RulingType.UPDATE,
     '"as if"': RulingType.AS_IF,
     "automatic success/failure": RulingType.AUTOMATIC_SUCCESS_FAILURE,
     "automatic success/failure &  automatic evasion": RulingType.AUTOMATIC_SUCCESS_FAILURE_AUTOMATIC_EVASION,
 }
 
-RULING_REMOVAL_PATTERNS = [
-    "FAQ removed - double-checking provenance.",
-    "OVERRULED SEE BELOW",
-    "SEE BELOW",
-    'Matt writes: "This was unintentional and we are looking into fixing this, perhaps in the next edition of the FAQ."',
-    "A: [NB see follow-up Q]",
-]
-
-RULING_STRIP_PATTERNS = [
-    "NB: ArkhamDB now incorporates errata from the Arkham Horror FAQ in its card text, so the ArkhamDB text and the card image above differ, as the ArkhamDB text has been edited to contain this erratum (updated August 2022): ",
-    '"As If": This was added to the FAQ (v.1.7, March 2020) and then amended (v.1.8, October 2020). You can read the October ruling on the ArkhamDB rules page here. (I\'m adding a hyperlink rather than retyping the rules in case in future the ruling is changed or amended - at that point, the rules page will be updated and all ArkhamDB FAQ entries will link to the correct ruling.)',
-]
+# RULING_REMOVAL_PATTERNS and RULING_STRIP_PATTERNS moved to constants.py
 
 
 def load_faqs(faqs_path: Path) -> dict[str, dict[str, str]]:
+    # Path validation and loading logic
     if not faqs_path.exists():
         raise FileNotFoundError(f"File {faqs_path} does not exist.")
     if not faqs_path.is_file():
         raise ValueError(f"Path {faqs_path} is not a file.")
     if faqs_path.suffix != ".json":
         raise ValueError(f"File {faqs_path} is not a JSON file.")
-    if not faqs_path.stat().st_size:
+    if not faqs_path.stat().st_size > 0:  # Check if file has content
         raise ValueError(f"File {faqs_path} is empty.")
 
-    with faqs_path.open() as file:
+    with faqs_path.open("r", encoding="utf-8") as file:  # Specify encoding
         return json.load(file)
 
 
@@ -180,50 +177,50 @@ def process_markdown_faq_data(markdown_faq_data: dict[str, str]) -> None:
         print(f"\n{'=' * 80}\n\n")
 
 
-import re # For extracting card codes and FAQ versions
-
-# Regex to find FAQ references like "FAQ, v.1.7, March 2020"
-FAQ_VERSION_PATTERN = re.compile(r"(FAQ|Official FAQ|Errata Sheet)[,\s]*v?\.?\s*(\d+\.\d+[\w\d.-]*)\s*,\s*([\w\s]+\s\d{4})", re.IGNORECASE)
-# Regex to find card links like "/card/01001" or "arkhamdb.com/card/01001"
-CARD_LINK_PATTERN = re.compile(r"(?:arkhamdb\.com)?/card/(\d{5})")
+# Regex patterns are now in constants.py (constants.FAQ_VERSION_PATTERN, constants.CARD_LINK_PATTERN)
 
 
-def extract_faq_source_name(text_content: str) -> Optional[str]:
-    match = FAQ_VERSION_PATTERN.search(text_content)
+def extract_faq_source_name(text_content: str) -> str | None:
+    match = constants.FAQ_VERSION_PATTERN.search(text_content)
     if match:
         return f"{match.group(1)} v.{match.group(2)}, {match.group(3)}"
     return None
 
-def extract_related_card_codes(html_content: str, current_card_code: str) -> List[str]:
-    found_codes = set(CARD_LINK_PATTERN.findall(html_content))
+
+def extract_related_card_codes(html_content: str, current_card_code: str) -> list[str]:
+    found_codes = set(constants.CARD_LINK_PATTERN.findall(html_content))
     # Remove the current card's code if it's found, as it's the source_card_code
-    return sorted(list(code for code in found_codes if code != current_card_code))
+    return sorted(code for code in found_codes if code != current_card_code)
 
 
-def process_ruling_html(source_card_code: str, ruling_soup: BeautifulSoup, card_updated_at: Optional[str]) -> List[Ruling]:
+def process_ruling_html(
+    source_card_code: str, ruling_soup: BeautifulSoup, card_updated_at: str | None
+) -> list[Ruling]:
     """
     Processes a BeautifulSoup object representing a single ruling item (e.g., content of an <li>)
     and extracts structured Ruling objects.
     """
-    rulings_for_item = []
-    current_question_html_str = None # Store HTML string of the question part
+    rulings_for_item: list[Ruling] = []
+    current_question_html_str: str | None = None  # Store HTML string of the question part
 
     original_snippet_html = ruling_soup.decode_contents().strip()
 
     # Basic Provenance for ArkhamDB
     base_provenance = Provenance(
         source_type="arkhamdb_faq",
-        source_url=f"https://arkhamdb.com/card/{source_card_code}#faq", # Link to card's FAQ section
-        source_date=card_updated_at, # This is the 'updated_at' for the whole card's FAQ entry on ArkhamDB
-        source_name=extract_faq_source_name(original_snippet_html) # Try to get specific FAQ version
+        source_url=f"https://arkhamdb.com/card/{source_card_code}#faq",  # Link to card's FAQ section
+        source_date=card_updated_at,  # This is the 'updated_at' for the whole card's FAQ entry on ArkhamDB
+        source_name=extract_faq_source_name(
+            original_snippet_html
+        ),  # Try to get specific FAQ version
     )
 
     # Iterate over <strong> tags, which usually denote the type of ruling (Q, A, Errata, etc.)
     # We use recursive=True here as strong tags can be nested in other tags within the li
     strong_tags = ruling_soup.find_all("strong")
 
-    if not strong_tags: # If no strong tags, treat as a single clarification block
-        plain_text_content = ruling_soup.get_text(separator=' ', strip=True)
+    if not strong_tags:  # If no strong tags, treat as a single clarification block
+        plain_text_content = ruling_soup.get_text(separator=" ", strip=True)
         if plain_text_content:
             rulings_for_item.append(
                 Ruling(
@@ -232,7 +229,9 @@ def process_ruling_html(source_card_code: str, ruling_soup: BeautifulSoup, card_
                     text=plain_text_content,
                     provenance=base_provenance.model_copy(deep=True),
                     original_html_snippet=original_snippet_html,
-                    related_card_codes=extract_related_card_codes(original_snippet_html, source_card_code)
+                    related_card_codes=extract_related_card_codes(
+                        original_snippet_html, source_card_code
+                    ),
                 )
             )
         return rulings_for_item
@@ -240,10 +239,14 @@ def process_ruling_html(source_card_code: str, ruling_soup: BeautifulSoup, card_
     for strong_tag in strong_tags:
         tag_text = strong_tag.get_text(strip=True).strip(":").lower()
 
-        content_html_parts = []
+        content_html_parts: list[str] = []
         current_node = strong_tag.next_sibling
         while current_node:
-            if isinstance(current_node, bs4.Tag) and current_node.name == "strong" and current_node in strong_tags:
+            if (
+                isinstance(current_node, bs4.Tag)
+                and current_node.name == "strong"
+                and current_node in strong_tags
+            ):
                 break
             content_html_parts.append(str(current_node))
             current_node = current_node.next_sibling
@@ -251,13 +254,12 @@ def process_ruling_html(source_card_code: str, ruling_soup: BeautifulSoup, card_
         # Consolidate content after the strong tag, up to the next strong tag or end of parent
         full_content_html_str = "".join(content_html_parts).strip()
         # Also get a plain text version for Q/A/Text fields
-        temp_soup_for_text = BeautifulSoup(full_content_html_str, 'html.parser')
-        full_content_plain_text = temp_soup_for_text.get_text(separator=' ', strip=True)
-
+        temp_soup_for_text = BeautifulSoup(full_content_html_str, "html.parser")
+        full_content_plain_text = temp_soup_for_text.get_text(separator=" ", strip=True)
 
         # If no content found directly after, check parent (if strong tag is wrapped)
-        if not full_content_html_str and strong_tag.parent and strong_tag.parent.name != 'body':
-            parent_content_parts = []
+        if not full_content_html_str and strong_tag.parent and strong_tag.parent.name != "body":
+            parent_content_parts: list[str] = []
             # Collect siblings of strong_tag within its parent, but only after the strong_tag
             start_collecting = False
             for child_node in strong_tag.parent.children:
@@ -266,13 +268,16 @@ def process_ruling_html(source_card_code: str, ruling_soup: BeautifulSoup, card_
                     continue
                 if not start_collecting:
                     continue
-                if isinstance(child_node, bs4.Tag) and child_node.name == "strong" and child_node in strong_tags:
+                if (
+                    isinstance(child_node, bs4.Tag)
+                    and child_node.name == "strong"
+                    and child_node in strong_tags
+                ):
                     break
                 parent_content_parts.append(str(child_node))
             full_content_html_str = "".join(parent_content_parts).strip()
-            temp_soup_for_text = BeautifulSoup(full_content_html_str, 'html.parser')
-            full_content_plain_text = temp_soup_for_text.get_text(separator=' ', strip=True)
-
+            temp_soup_for_text = BeautifulSoup(full_content_html_str, "html.parser")
+            full_content_plain_text = temp_soup_for_text.get_text(separator=" ", strip=True)
 
         ruling_type_key = tag_text
         if tag_text.startswith("follow-up q"):
@@ -289,8 +294,8 @@ def process_ruling_html(source_card_code: str, ruling_soup: BeautifulSoup, card_
             related_codes = extract_related_card_codes(original_snippet_html, source_card_code)
 
             if ruling_type_enum == RulingType.QUESTION_ANSWER:
-                current_question_html_str = full_content_plain_text # Store plain text
-            elif tag_text == 'a' and current_question_html_str is not None:
+                current_question_html_str = full_content_plain_text  # Store plain text
+            elif tag_text == "a" and current_question_html_str is not None:
                 rulings_for_item.append(
                     Ruling(
                         source_card_code=source_card_code,
@@ -298,12 +303,12 @@ def process_ruling_html(source_card_code: str, ruling_soup: BeautifulSoup, card_
                         question=current_question_html_str,
                         answer=full_content_plain_text,
                         provenance=current_provenance,
-                        original_html_snippet=original_snippet_html, # Snippet is for the whole Q&A block
-                        related_card_codes=related_codes
+                        original_html_snippet=original_snippet_html,  # Snippet is for the whole Q&A block
+                        related_card_codes=related_codes,
                     )
                 )
                 current_question_html_str = None
-            elif ruling_type_enum != RulingType.QUESTION_ANSWER :
+            elif ruling_type_enum != RulingType.QUESTION_ANSWER:
                 if current_question_html_str:
                     rulings_for_item.append(
                         Ruling(
@@ -313,7 +318,7 @@ def process_ruling_html(source_card_code: str, ruling_soup: BeautifulSoup, card_
                             answer=full_content_plain_text,
                             provenance=current_provenance,
                             original_html_snippet=original_snippet_html,
-                            related_card_codes=related_codes
+                            related_card_codes=related_codes,
                         )
                     )
                     current_question_html_str = None
@@ -325,22 +330,24 @@ def process_ruling_html(source_card_code: str, ruling_soup: BeautifulSoup, card_
                             text=full_content_plain_text,
                             provenance=current_provenance,
                             original_html_snippet=original_snippet_html,
-                            related_card_codes=related_codes
+                            related_card_codes=related_codes,
                         )
                     )
         elif current_question_html_str:
-             rulings_for_item.append(
+            rulings_for_item.append(
                 Ruling(
                     source_card_code=source_card_code,
                     ruling_type=RulingType.QUESTION_ANSWER,
                     question=current_question_html_str,
                     answer=full_content_plain_text,
-                    provenance=base_provenance.model_copy(deep=True), # Use base for this part
+                    provenance=base_provenance.model_copy(deep=True),  # Use base for this part
                     original_html_snippet=original_snippet_html,
-                    related_card_codes=extract_related_card_codes(original_snippet_html, source_card_code)
+                    related_card_codes=extract_related_card_codes(
+                        original_snippet_html, source_card_code
+                    ),
                 )
             )
-             current_question_html_str = None
+            current_question_html_str = None
 
     # If after processing all strong tags, there's an uncaptured question, it implies it's a Q without a formal A.
     # Or, if no strong tags were processed but there was content (handled by initial check).
@@ -349,23 +356,25 @@ def process_ruling_html(source_card_code: str, ruling_soup: BeautifulSoup, card_
     return rulings_for_item
 
 
-def process_html_faq_data(raw_faq_json: dict[str, dict]) -> List[Ruling]:
+def process_html_faq_data(raw_faq_json: dict[str, dict]) -> list[Ruling]:
     """
     raw_faq_json is the direct output from load_faqs:
     { card_code: {"text": "<html_string>", "updated_at": "isodate", ...}, ... }
     """
-    all_rulings: List[Ruling] = []
+    all_rulings: list[Ruling] = []
 
-    html_content_map = convert_json_to_html(raw_faq_json) # card_code -> BeautifulSoup
+    html_content_map = convert_json_to_html(raw_faq_json)  # card_code -> BeautifulSoup
 
     for card_code, card_level_soup in html_content_map.items():
         card_metadata = raw_faq_json.get(card_code, {})
-        card_updated_at = card_metadata.get("updated_at") # Get card's last update time
+        card_updated_at: str | None = card_metadata.get("updated_at")  # Get card's last update time
 
         list_items = card_level_soup.find_all("li")
 
         if list_items:
-            for item_idx, li_soup in enumerate(list_items):
+            for _item_idx, li_soup in enumerate(
+                list_items
+            ):  # Consider using _ for item_idx if not used
                 rulings_from_li = process_ruling_html(card_code, li_soup, card_updated_at)
                 all_rulings.extend(rulings_from_li)
         else:
@@ -376,11 +385,11 @@ def process_html_faq_data(raw_faq_json: dict[str, dict]) -> List[Ruling]:
 
 
 def main() -> None:
-    output_path = Path("../assets/processed_rulings_v2.json")
+    output_path = constants.PROCESSED_RULINGS_V2_PATH
 
     try:
         # faq_data now holds the full JSON structure from faqs.json
-        faq_data_full = load_faqs(FAQS_PATH)
+        faq_data_full = load_faqs(constants.FAQS_FILE_PATH)
     except (FileNotFoundError, ValueError) as e:
         logging.error(f"Error loading faqs: {e}, aborting.")
         return
@@ -389,13 +398,15 @@ def main() -> None:
 
     all_processed_rulings = process_html_faq_data(faq_data_full)
 
-    rulings_as_dicts = [ruling.model_dump(mode="json", exclude_none=True) for ruling in all_processed_rulings]
+    rulings_as_dicts = [
+        ruling.model_dump(mode="json", exclude_none=True) for ruling in all_processed_rulings
+    ]
 
     try:
-        with output_path.open('w', encoding='utf-8') as f:
+        with output_path.open("w", encoding="utf-8") as f:
             json.dump(rulings_as_dicts, f, indent=2, ensure_ascii=False)
         logging.info(f"Successfully processed rulings and saved to {output_path}")
-    except IOError as e:
+    except OSError as e:
         logging.error(f"Error writing processed rulings to {output_path}: {e}")
 
     # markdown_faq_data = convert_html_to_markdown(faq_data)

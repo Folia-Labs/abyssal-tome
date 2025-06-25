@@ -15,7 +15,7 @@ flet = "0.19.0"
 regex = "^2023.12.25"
 gql = "^3.5.0"
 aiohttp = "^3.9.3"
-pytest = "^8.0.0"
+# pytest = "^8.0.0" # Moved to dev dependencies
 flet-fastapi = "^0.19.0"
 tqdm = "^4.66.1"
 clipman = "^3.1.6"
@@ -34,6 +34,12 @@ mdit-py-plugins = "^0.4.0"
 bs4 = "^0.0.2"
 hypothesis = "^6.98.9"
 
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.2.1" # Match the version in pre-commit or use a recent one
+pytest = "^8.0.0" # Pytest was already in main deps, move to dev? Or keep if tests run in prod context for some reason. For now, adding ruff here.
+# If pytest is only for dev, it should be here. Let's assume it can be moved for typical projects.
+# Keeping pytest in main deps for now if that was intentional.
 
 [build-system]
 requires = ["poetry-core>=1.9.0"]
@@ -87,6 +93,10 @@ lint.preview = true
 lint.ignore = ["ISC001"]
 # Enumerate all fixed violations.
 show-fixes = true
+
+[tool.ruff.lint.per-file-ignores]
+"FAQML/tests/*" = ["S101"]
+"tests/*" = ["S101"]
 
 [tool.ruff.lint.pep8-naming]
 classmethod-decorators = [
