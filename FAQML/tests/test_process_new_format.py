@@ -10,6 +10,11 @@ from scripts.process_new_format import Ruling, RulingType, process_ruling_html
 @given(from_type(Ruling))
 def test_ruling_model_properties(ruling: Ruling) -> None:
     # Verify that the ruling instance adheres to the properties defined in the Ruling model
+    """
+    Test that a Ruling instance has the correct types for its attributes.
+    
+    Asserts that `ruling_type` is a `RulingType` and `content` is a list containing only `bs4.Tag` or `str` elements.
+    """
     assert isinstance(ruling.ruling_type, RulingType)
     assert isinstance(ruling.content, list)
     for item in ruling.content:
@@ -18,12 +23,20 @@ def test_ruling_model_properties(ruling: Ruling) -> None:
 
 # Existing tests...
 def test_process_ruling_html_empty_input() -> None:
+    """
+    Test that `process_ruling_html` returns an empty list when given empty HTML input.
+    """
     empty_soup = BeautifulSoup("", "html.parser")
     result = process_ruling_html(empty_soup)
     assert result == []
 
 
 def test_process_ruling_html_with_valid_input() -> None:
+    """
+    Test that process_ruling_html correctly parses HTML with both errata and question/answer rulings.
+    
+    Verifies that the function returns two rulings with appropriate types and that their content includes the expected text for errata, question, and answer.
+    """
     html_content = """
     <strong>Errata:</strong> Corrected text.
     <strong>Q:</strong> Question text?
@@ -42,6 +55,11 @@ def test_process_ruling_html_with_valid_input() -> None:
 
 
 def test_process_ruling_html_combines_q_and_a() -> None:
+    """
+    Test that a question and answer pair in HTML is combined into a single QUESTION-type Ruling.
+    
+    Verifies that `process_ruling_html` merges adjacent Q: and A: sections into one ruling with both question and answer content.
+    """
     html_content = """
     <strong>Q:</strong> Question text?
     <strong>A:</strong> Answer text.
@@ -64,6 +82,13 @@ def test_process_ruling_html_combines_q_and_a() -> None:
     ],
 )
 def test_process_ruling_html_various_types(input_html, expected_ruling_types) -> None:
+    """
+    Test that `process_ruling_html` correctly identifies and returns rulings of the expected types from various HTML inputs.
+    
+    Parameters:
+        input_html (str): The HTML string containing rulings to be parsed.
+        expected_ruling_types (list): The list of expected `RulingType` values for the parsed rulings.
+    """
     soup = BeautifulSoup(input_html, "html.parser")
     result = process_ruling_html(soup)
     assert len(result) == len(expected_ruling_types)

@@ -32,6 +32,12 @@ TAG_TO_LETTER = {
 
 
 def tokenize(state: StateInline, silent: bool) -> bool:
+    """
+    Attempts to parse a custom symbol enclosed in square brackets at the current position in the Markdown inline state.
+    
+    Returns:
+        bool: True if a valid symbol token is recognized and added to the state; False otherwise.
+    """
     start = state.pos
     if silent or state.src[start] != "[":
         return False
@@ -69,6 +75,11 @@ def tokenize(state: StateInline, silent: bool) -> bool:
 
 
 def postProcess(state: StateInline) -> None:
+    """
+    Processes collected symbol delimiters in the parsing state to adjust token types for custom inline symbols.
+    
+    This function analyzes the delimiters gathered during tokenization and invokes a helper to convert relevant tokens into opening and closing symbol tokens, preparing them for further rendering or processing.
+    """
     print("postProcess called")
     print(f"Number of delimiters method 1: {len(state.delimiters)}")
 
@@ -89,6 +100,11 @@ def postProcess(state: StateInline) -> None:
 
 
 def _postProcess(state: StateInline, delimiters: list[Delimiter]) -> None:
+    """
+    Converts symbol delimiter tokens in the parsing state into opening and closing symbol tokens.
+    
+    This function iterates over symbol delimiters in the parsing state, updating the corresponding tokens to represent the start and end of a custom inline symbol. Only delimiters with the marker for "[" are processed. Tokens are modified in place to have appropriate types, tags, nesting levels, and markup for further rendering.
+    """
     if not delimiters and not state.delimiters:
         print("No delimiters")
         return

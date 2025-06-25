@@ -34,11 +34,21 @@ with open("assets/rulings_schema.json") as schema_file:
 # Function to validate data against the schema
 def validate_data(data, schema) -> None:
     # Implement validation logic here
+    """
+    Placeholder for validating input data against a provided schema.
+    
+    Currently, this function does not perform any validation and always returns None.
+    """
     pass
 
 
 # Function to process and insert data into the database
 def process_and_insert_data(data) -> None:
+    """
+    Validates and inserts a list of ruling data items into the database.
+    
+    Each item is validated against the schema before insertion. Invalid items are skipped and logged as errors. Valid items are inserted as new records in the Ruling table, with date strings parsed into datetime objects where applicable.
+    """
     for item in data:
         # Validate the data against the schema
         if not validate_data(item, schema):
@@ -77,6 +87,15 @@ db.close()
 
 # Example function to query the database
 def query_rulings_by_card_name(card_name):
+    """
+    Retrieve all rulings from the database that match the specified card name.
+    
+    Parameters:
+        card_name (str): The name of the card to search for.
+    
+    Returns:
+        List[dict]: A list of dictionaries, each representing a ruling for the specified card.
+    """
     query = Ruling.select().where(Ruling.card_name == card_name)
     return [model_to_dict(ruling) for ruling in query]
 

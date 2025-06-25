@@ -13,6 +13,12 @@ from abyssal_tome import constants # Updated import path
 
 
 def fetch_cards() -> list[dict[str, any]]:  # Added type hint
+    """
+    Fetches all encounter cards from the ArkhamDB API.
+    
+    Returns:
+        A list of dictionaries, each representing a card with its associated data.
+    """
     uri = "https://arkhamdb.com/api/public/cards/?encounter=1"
     print("Fetching all cards from ArkhamDB.")
     response = requests.get(uri)
@@ -25,6 +31,12 @@ def fetch_cards() -> list[dict[str, any]]:  # Added type hint
 async def fetch_faq(
     session: aiohttp.ClientSession, card: dict[str, any]
 ) -> dict[str, any] | None:  # Added type hints
+    """
+    Asynchronously fetches the FAQ data for a given card from the ArkhamDB API.
+    
+    Returns:
+        The parsed FAQ JSON data as a dictionary if successful, or None if the card code is missing or an HTTP error occurs.
+    """
     code = card.get("code")
     if not code:
         return None
@@ -39,6 +51,17 @@ async def fetch_faq(
 
 
 def parse_faqs(faqs: list[dict[str, any] | None]) -> dict[str, dict[str, str]]:  # Added type hint
+    """
+    Parse and clean a list of FAQ items, extracting relevant information for each card.
+    
+    Each FAQ item is validated for required fields and cleaned using regex patterns to standardize the text. Only entries with a valid update date are included.
+    
+    Parameters:
+        faqs (list[dict[str, any] | None]): List of FAQ responses, where each item may be None or a list containing FAQ data.
+    
+    Returns:
+        dict[str, dict[str, str]]: A dictionary mapping card codes to their parsed FAQ entries, each containing the code, cleaned text, and update date.
+    """
     rulings: dict[str, dict[str, str]] = {}
     for faq_item in tqdm.tqdm(
         faqs, desc="Parsing faqs"
@@ -80,6 +103,11 @@ def parse_faqs(faqs: list[dict[str, any] | None]) -> dict[str, dict[str, str]]: 
 
 
 async def main() -> None:
+    """
+    Asynchronously fetches all ArkhamDB card FAQs, parses and cleans the data, and saves the results as a formatted JSON file.
+    
+    This function retrieves the full set of cards, concurrently fetches their FAQ entries, processes and validates the FAQ data, and writes the cleaned output to the path specified in the constants module. Progress bars are displayed during fetching and parsing for user feedback.
+    """
     cards = fetch_cards()
     # cards = cards[:100] # For testing
     # tqdm_async = tqdm_asyncio() # tqdm_asyncio() is not a class to instantiate directly
