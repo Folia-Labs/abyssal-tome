@@ -776,4 +776,3 @@ if __name__ == "__main__":
     # For direct Flet execution (without FastAPI):
     # ft.app(target=main_flet_app, assets_dir=str(Path(__file__).parent / "assets"), view=ft.WEB_BROWSER, port=flet_port)
 
-```
