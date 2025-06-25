@@ -43,8 +43,7 @@ def validate_data(data, schema) -> None:
 
 
 # Function to process and insert data into the database
--def process_and_insert_data(data) -> None:
-+def process_and_insert_data(data: list) -> None:
+def process_and_insert_data(data: list) -> None:
     """
     Validates and inserts a list of ruling data items into the database.
     
