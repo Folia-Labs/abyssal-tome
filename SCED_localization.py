@@ -415,8 +415,9 @@ def get_se_skill(card, index):
     	str: The capitalized skill name at the given index, or 'None' if the card has fewer than six skills.
     """
     skill_list = [
-        skill.capitalize() for skill in SKILL_NAMES for _ in range(card.get(f"skill_{skill}", 0))
-    ]
+     skill_list = [
+         skill.capitalize() for skill in SKILL_NAMES for _ in range(card.get(f"skill_{skill}", 0))
+     ]
     # Add 'None' to fill the list to 6 elements.
     skill_list += ["None"] * (6 - len(skill_list))
     return skill_list[index]
