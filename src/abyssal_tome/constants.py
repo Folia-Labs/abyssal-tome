@@ -1,4 +1,12 @@
+"""
+Constants module for the Abyssal Tome project.
+
+This module centralizes project-wide constants including paths, regex patterns,
+icon mappings, and configuration values used across multiple scripts and modules.
+"""
+
 from pathlib import Path
+import re
 import re
 
 # --- Project Root ---
