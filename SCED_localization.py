@@ -282,6 +282,12 @@ args = parser.parse_args()
 
 
 def get_lang_code_region():
+    """
+    Extracts the language code and region from the command-line language argument.
+    
+    Returns:
+        tuple: A tuple containing the language code and region. If no region is specified, the second element is an empty string.
+    """
     parts = args.lang.split("_")
     if len(parts) > 1:
         return parts[0], parts[1]
@@ -290,6 +296,12 @@ def get_lang_code_region():
 
 def import_lang_module():
     # NOTE: Import language dependent functions.
+    """
+    Dynamically imports and returns the language-specific transformation module based on the current language code and region.
+    
+    Returns:
+        The imported language transformation module, or None if the import fails.
+    """
     lang_code, region = get_lang_code_region()
     lang_folder = f"translations/{lang_code}"
     if lang_folder not in sys.path:
@@ -393,6 +405,15 @@ def get_se_agility(card):
 
 
 def get_se_skill(card, index):
+    """
+    Return the name of the skill at the specified index for a card, filling with 'None' if fewer than six skills are present.
+    
+    Parameters:
+    	index (int): The position in the skill list to retrieve.
+    
+    Returns:
+    	str: The capitalized skill name at the given index, or 'None' if the card has fewer than six skills.
+    """
     skill_list = [
         skill.capitalize() for skill in SKILL_NAMES for _ in range(card.get(f"skill_{skill}", 0))
     ]
@@ -487,6 +508,12 @@ def is_se_act_image_front(card):
 
 
 def is_se_act_image_back(card):
+    """
+    Determine if the given card uses a back image for its act side based on its code.
+    
+    Returns:
+        bool: True if the card code corresponds to an act card that uses a back image; otherwise, False.
+    """
     return card["code"] in [
         "03322a",
         "03323a",
@@ -499,6 +526,12 @@ def is_se_act_image_back(card):
 
 
 def is_se_bottom_line_transparent(card, sheet) -> bool:
+    """
+    Determine whether the bottom line of a card image should be rendered as transparent based on card type and sheet side.
+    
+    Returns:
+        bool: True if the bottom line should be transparent; otherwise, False.
+    """
     if card["type_code"] == "enemy":
         return True
     if sheet == 0 and (is_se_agenda_image_front(card) or is_se_act_image_front(card)):
@@ -507,18 +540,38 @@ def is_se_bottom_line_transparent(card, sheet) -> bool:
 
 
 def get_se_illustrator(card, sheet):
+    """
+    Returns the illustrator name for a card unless the bottom line is transparent.
+    
+    If the card's bottom line is transparent, an empty string is returned; otherwise, the illustrator field is extracted from the card data.
+    """
     if is_se_bottom_line_transparent(card, sheet):
         return ""
     return get_field(card, "illustrator", "")
 
 
 def get_se_copyright(card, sheet) -> str:
+    """
+    Returns the copyright line for a card if the bottom line is not transparent.
+    
+    Parameters:
+        card (dict): The card data dictionary.
+        sheet (str): The sheet or template identifier.
+    
+    Returns:
+        str: The formatted copyright string, or an empty string if the bottom line is transparent.
+    """
     if is_se_bottom_line_transparent(card, sheet):
         return ""
     return f"<cop> {PACK_YEAR_MAP.get(card.get('pack_code'), '')} FFG"
 
 
 def get_se_pack(card, sheet):
+    """
+    Returns the Strange Eons pack name corresponding to the card's pack code, or an empty string if the bottom line should be transparent.
+    
+    If the card's bottom line is not transparent, maps the ArkhamDB `pack_code` to the appropriate Strange Eons pack name.
+    """
     if is_se_bottom_line_transparent(card, sheet):
         return ""
     pack = card["pack_code"]
@@ -1136,16 +1189,31 @@ def get_se_encounter_total(card, sheet):
 
 
 def get_se_encounter_number(card, sheet):
+    """
+    Returns the encounter number for a card if the bottom line is not transparent; otherwise, returns an empty string.
+    
+    If the card's bottom line is transparent, no encounter number is shown.
+    """
     if is_se_bottom_line_transparent(card, sheet):
         return ""
     return str(get_field(card, "encounter_position", 0))
 
 
 def get_se_encounter_front_visibility(card) -> str:
+    """
+    Return the visibility setting for the front of an encounter card.
+    
+    Returns "0" for cards with codes "06015a" or "06015b", indicating hidden visibility; otherwise returns "1" for visible.
+    """
     return "0" if card["code"] in ["06015a", "06015b"] else "1"
 
 
 def get_se_encounter_back_visibility(card) -> str:
+    """
+    Return the visibility setting for the back side of an encounter card.
+    
+    Returns "0" for specific card codes that require the back to be hidden; otherwise, returns "1".
+    """
     return (
         "0"
         if card["code"]
@@ -1173,6 +1241,12 @@ def get_se_encounter_back_visibility(card) -> str:
 
 
 def get_se_doom(card):
+    """
+    Retrieve the doom value for a card, converting special values to SE-compatible format.
+    
+    If the doom value is -2, it is mapped to "Star" to indicate a variable doom value.
+    Returns the doom value as a string.
+    """
     doom = get_field(card, "doom", "-")
     # NOTE: ADB uses -2 to indicate variable doom.
     if doom == -2:
@@ -1182,6 +1256,12 @@ def get_se_doom(card):
 
 def get_se_doom_comment(card) -> str:
     # NOTE: Special cases the cards with an asterisk comment on the doom or clue.
+    """
+    Returns a flag indicating whether the card has a special doom or clue comment.
+    
+    Returns:
+        str: "1" if the card requires an asterisk comment (special case), otherwise "0".
+    """
     return "1" if card["code"] in ["04212"] else "0"
 
 
@@ -1194,6 +1274,12 @@ def get_se_clue(card):
 
 
 def get_se_shroud(card):
+    """
+    Retrieve the shroud value for a card, converting variable shroud indicators to "X".
+    
+    Returns:
+        str: The shroud value as a string, with variable shroud represented as "X".
+    """
     shroud = get_field(card, "shroud", 0)
     # NOTE: ADB uses -2 to indicate variable shroud.
     if shroud == -2:
@@ -1203,6 +1289,11 @@ def get_se_shroud(card):
 
 def get_se_per_investigator(card) -> str:
     # NOTE: Location and act cards default to use per-investigator clue count, unless clue count is 0, variable (-2) or 'clues_fixed' is specified.
+    """
+    Return whether the card uses a per-investigator value for clues or health.
+    
+    For location and act cards, returns "1" if clues are per investigator (unless clues are 0, variable, or fixed), otherwise "0". For other cards, returns "1" if health is per investigator, otherwise "0".
+    """
     if card["type_code"] in ["location", "act"]:
         return (
             "0" if get_field(card, "clues", 0) in [0, -2] or card.get("clues_fixed", False) else "1"
@@ -1211,11 +1302,22 @@ def get_se_per_investigator(card) -> str:
 
 
 def get_se_progress_number(card):
+    """
+    Return the progress stage number of a card as a string.
+    
+    The progress number typically indicates the stage or step of an agenda or act card in the game.
+    """
     return str(get_field(card, "stage", 0))
 
 
 def get_se_progress_letter(card) -> str:
     # NOTE: Special case agenda and act letters.
+    """
+    Return the progress letter for an agenda or act card based on its code.
+    
+    Returns:
+        str: The progress letter ("g", "e", "c", or "a") corresponding to the card's code, used for special agenda and act cards.
+    """
     if card["code"] in [
         "53029",
         "53030",
@@ -1258,11 +1360,22 @@ def get_se_progress_letter(card) -> str:
 
 
 def is_se_progress_reversed(card):
+    """
+    Determine if the card's progress direction is reversed based on its code.
+    
+    Returns:
+        bool: True if the card code indicates reversed progress, otherwise False.
+    """
     return card["code"] in ["03278", "03279a", "03279b", "03280", "03281"]
 
 
 def get_se_progress_direction(card) -> str:
     # NOTE: Special case agenda and act direction.
+    """
+    Returns the progress direction for an agenda or act card.
+    
+    If the card's progress is reversed, returns "Reversed"; otherwise, returns "Standard".
+    """
     if is_se_progress_reversed(card):
         return "Reversed"
     return "Standard"
@@ -1270,10 +1383,19 @@ def get_se_progress_direction(card) -> str:
 
 def get_se_unique(card) -> str:
     # NOTE: ADB doesn't specify 'is_unique' property for investigator cards but they are always unique.
+    """
+    Return whether the card is unique in SE format.
+    
+    Returns:
+        "1" if the card is unique or is an investigator card, otherwise "0".
+    """
     return "1" if card.get("is_unique", False) or card["type_code"] == "investigator" else "0"
 
 
 def get_se_name(name):
+    """
+    Returns the localized version of a card name using the active language transformation.
+    """
     return transform_lang(name)
 
 
@@ -1308,6 +1430,17 @@ def get_se_traits(card):
 
 
 def get_se_markup(rule):
+    """
+    Convert ArkhamDB-style markup in a rule string to Strange Eons-compatible tags.
+    
+    Replaces predefined token patterns (e.g., [action], [willpower]) with corresponding SE tags, and formats trait markers ([[trait]]) with specific font size tags for SE compatibility.
+    
+    Parameters:
+        rule (str): The input string containing ArkhamDB markup.
+    
+    Returns:
+        str: The input string with all recognized markup converted to SE-compatible tags.
+    """
     markup = [
         (r"\[action\]", "<act>"),
         (r"\[reaction\]", "<rea>"),
@@ -1346,6 +1479,14 @@ def get_se_markup(rule):
 
 
 def get_se_rule(rule):
+    """
+    Format and clean up a card's rule text for compatibility with Strange Eons templates.
+    
+    Removes errata and FAQ notes, applies custom markup for bold action keywords, converts paragraph tags to newlines, formats bullet points, and appends a trailing space to address layout issues. The processed text is then passed through a language-specific transformation.
+     
+    Returns:
+        str: The formatted and transformed rule text.
+    """
     rule = get_se_markup(rule)
     # NOTE: Get rid of the errata text, e.g. Wendy's Amulet.
     rule = re.sub(r"<i>\(Errat(um|a)[^<]*</i>", "", rule)
@@ -1441,6 +1582,12 @@ def get_se_tracker(card):
 
 
 def is_return_to_scenario(card):
+    """
+    Determine if a card represents a "Return To" scenario based on its pack and type codes.
+    
+    Returns:
+        bool: True if the card is a scenario from a "Return To" pack, otherwise False.
+    """
     return (
         card["pack_code"] in ["rtnotz", "rtdwl", "rtptc", "rttfa", "rttcu"]
         and card["type_code"] == "scenario"
@@ -1449,6 +1596,12 @@ def is_return_to_scenario(card):
 
 def get_se_front_template(card) -> str:
     # NOTE: Use scenario template of story card for return to scenarios. Also for some special cards.
+    """
+    Determine the Strange Eons front template type for a card.
+    
+    Returns:
+        str: "Chaos" if the card is a return-to-scenario or a special card (e.g., code "07062a"), otherwise "Story".
+    """
     if is_return_to_scenario(card) or card["code"] in ["07062a"]:
         return "Chaos"
     return "Story"
@@ -1456,6 +1609,11 @@ def get_se_front_template(card) -> str:
 
 def get_se_back_template(card) -> str:
     # NOTE: Use scenario template of story card for return to scenarios.
+    """
+    Return the SE back template name for a card.
+    
+    For "Return to" scenario cards, returns "ChaosFull"; otherwise, returns "Story".
+    """
     if is_return_to_scenario(card):
         return "ChaosFull"
     return "Story"
@@ -1509,6 +1667,12 @@ def get_se_back_flavor(card):
 def get_se_back_header(card):
     # NOTE: Back header is used by scenario card with a non-standard header. We intentionally add a space at the end to work around a formatting issue in SE.
     # If we don't add the extra space, SE doesn't perform line breaking.
+    """
+    Extract and format the back header text for a scenario card, ensuring proper line breaking in Strange Eons.
+    
+    Returns:
+        str: The formatted back header text with an added space to trigger line breaking in SE.
+    """
     header = get_field(card, "back_text", "")
     header = next(line.strip() for line in header.split("\n")) + " "
     return get_se_header(header)
@@ -1516,6 +1680,17 @@ def get_se_back_header(card):
 
 def get_se_paragraph_line(card, text, flavor, index):
     # NOTE: Header is determined by 'b' tag ending with colon or followed by a newline (except for resolution text).
+    """
+    Extracts the header, flavor text, and rule text from a specified paragraph of card text.
+    
+    Parameters:
+        text (str): The HTML-formatted card text to parse.
+        flavor (str): Optional flavor text to prepend or merge with the card text.
+        index (int): The zero-based index of the paragraph to extract.
+    
+    Returns:
+        tuple[str, str, str]: A tuple containing the header, flavor text, and rule text for the specified paragraph. Returns empty strings if the index is out of range.
+    """
     def is_header(elem) -> bool:
         if elem.name == "b":
             elem_text = elem.get_text().strip()
@@ -1580,6 +1755,11 @@ def get_se_paragraph_line(card, text, flavor, index):
 
         # NOTE: Remove leading whitespace before checking for header or flavor.
         def strip_leading(node) -> None:
+            """
+            Remove leading whitespace or empty nodes from the beginning of a node's contents.
+            
+            Modifies the node in place by extracting child elements that are empty or contain only whitespace, stopping at the first non-empty child.
+            """
             for child in node.contents:
                 if not str(child).strip():
                     child.extract()
@@ -1620,6 +1800,15 @@ def get_se_paragraph_line(card, text, flavor, index):
 
 
 def get_se_front_paragraph_line(card, index):
+    """
+    Return the formatted paragraph line for the front side of a card at the specified index.
+    
+    Parameters:
+    	index (int): The paragraph line index to retrieve.
+    
+    Returns:
+    	tuple[str, str, str]: A tuple containing the formatted text, flavor, and any additional formatting for the specified paragraph line.
+    """
     text = get_field(card, "text", "")
     flavor = get_field(card, "flavor", "")
     return get_se_paragraph_line(card, text, flavor, index)
@@ -1814,6 +2003,15 @@ def get_dynamic_assignments(card, metadata, image_sheet):
 
 
 def get_final_card(assignments):
+    """
+    Constructs a dictionary representing a card by combining static and dynamic property assignments.
+    
+    Parameters:
+        assignments (dict): A mapping of assignment types (static and dynamic) to their respective property assignments.
+    
+    Returns:
+        dict: A dictionary containing the final card properties with their corresponding values.
+    """
     final_card = {
         key: value for value, keys in assignments[AssignmentType.STATIC].items() for key in keys
     }
@@ -1824,6 +2022,11 @@ def get_final_card(assignments):
 
 
 def set_property_assignments(final_card, property_var_by_key, SE_PROPERTY_COUNTS) -> None:
+    """
+    Assigns computed property values to a card dictionary based on property extraction methods and assignment patterns.
+    
+    Updates the `final_card` dictionary by applying each property extraction method from `SE_PROPERTY_COUNTS` to the corresponding arguments in `property_var_by_key`, formatting the property name according to the specified pattern and count.
+    """
     for property_key, val in SE_PROPERTY_COUNTS.values():
         property_method, property_name_pattern, property_count = val
         property_args = property_var_by_key[property_key]
@@ -1835,6 +2038,21 @@ def set_property_assignments(final_card, property_var_by_key, SE_PROPERTY_COUNTS
 
 
 def get_se_card(result_id, card, metadata, image_filename, image_scale, image_move_x, image_move_y):
+    """
+    Constructs a dictionary of Strange Eons (SE) card properties for a given card, combining static and dynamic assignments and applying property extraction functions.
+    
+    Parameters:
+        result_id (str): Encoded identifier containing deck and sheet information.
+        card (dict): ArkhamDB card data.
+        metadata (dict): Additional metadata for the card.
+        image_filename (str): Path to the card's image file.
+        image_scale (float): Scaling factor for the card image.
+        image_move_x (float): Horizontal image offset.
+        image_move_y (float): Vertical image offset.
+    
+    Returns:
+        dict: A dictionary mapping SE property keys to their corresponding values for the card.
+    """
     image_sheet = decode_result_id(result_id)[-1]
     property_var_by_key = {
         SEProperties.F_P_HEADER: card,
@@ -1865,15 +2083,26 @@ def get_se_card(result_id, card, metadata, image_filename, image_scale, image_mo
 
 
 def ensure_dir(dir) -> None:
+    """
+    Create the specified directory if it does not already exist, including any necessary parent directories.
+    """
     os.makedirs(dir, exist_ok=True)
 
 
 def recreate_dir(dir) -> None:
+    """
+    Delete the specified directory and all its contents, then recreate it as an empty directory.
+    """
     shutil.rmtree(dir, ignore_errors=True)
     os.makedirs(dir)
 
 
 def download_repo(repo_folder, repo):
+    """
+    Clone a GitHub repository if it does not already exist locally.
+    
+    If the specified local repository folder exists, returns its path. Otherwise, clones the repository from GitHub into the designated directory and returns the new local path.
+    """
     if Path(repo_folder).is_dir():
         return repo_folder
     print(f"Cloning {repo}...")
@@ -1888,6 +2117,11 @@ ahdb = {}
 
 
 def update_encounter_code(translation) -> None:
+    """
+    Synchronize the 'encounter_code' field between cards and their linked cards in the translation data.
+    
+    If either a card or its linked card has an 'encounter_code' and the other does not, this function copies the value to ensure both have the same 'encounter_code'.
+    """
     for card in translation.values():
         if "linked_card" in card:
             linked_card = card["linked_card"]
@@ -1901,6 +2135,10 @@ def update_encounter_code(translation) -> None:
 
 
 def download_card(ahdb_id):
+    """
+    Download, cache, and process ArkhamDB card data for a given card ID, including translations and special patches.
+    
+    If the local cache does not exist, retrieves ArkhamDB card data and translations, merges and patches them for compatibility, and saves to disk. Loads and processes the data, including handling taboo and parallel cards, linking cards, and extracting special point attributes. Returns the processed card dictionary for the specified ArkhamDB ID, or `None` if not found.
     def copy_card_properties(old_card, card, properties):
         temp_card = copy.deepcopy(card)
         temp_card["code"] = f"{old_card['code']}-pb"
@@ -1917,6 +2155,15 @@ def download_card(ahdb_id):
         print("Downloading ArkhamDB data...")
 
         def load_folder(folder):
+            """
+            Load all JSON card objects from a folder and its subfolders, returning a dictionary keyed by card code.
+            
+            Parameters:
+                folder (str): Path to the root folder containing JSON files.
+            
+            Returns:
+                dict: A dictionary mapping card codes to their corresponding card objects.
+            """
             all_cards = {}
             for data_filename in glob.glob(f"{folder}/**/*.json"):
                 with open(data_filename, encoding="utf-8") as file:
@@ -2053,6 +2300,13 @@ url_map = None
 
 
 def read_url_map():
+    """
+    Load the URL mapping from the specified file, initializing it if necessary.
+    
+    Returns:
+        url_map (dict): The mapping of language codes to URL sets.
+        url_id_map (dict): A reverse mapping from URLs to their corresponding IDs.
+    """
     global url_map
     if not (url_file_path := args.url_file):
         print("Error: URL file not specified.")
@@ -2077,6 +2331,11 @@ def read_url_map():
 
 
 def write_url_map() -> None:
+    """
+    Write the current URL mapping to a JSON file in the cache directory.
+    
+    Creates the cache directory if it does not exist and serializes the global `url_map` to the file specified by `args.url_file` in UTF-8 encoding.
+    """
     ensure_dir(args.cache_dir)
     if url_map is not None:
         with open(args.url_file, "w", encoding="utf-8") as file:
@@ -2085,6 +2344,17 @@ def write_url_map() -> None:
 
 
 def get_en_url_id(url: str) -> str | None:
+    """
+    Retrieve or generate a unique identifier for a given URL in the English URL mapping.
+    
+    If the URL is already mapped, returns its existing identifier. Otherwise, generates a new unique identifier, updates the mapping, and returns the new identifier.
+    
+    Parameters:
+        url (str): The URL to retrieve or assign an identifier for.
+    
+    Returns:
+        str | None: The unique identifier for the URL, or None if the URL is not specified.
+    """
     if not url:
         print("Error: URL not specified.")
         return None
@@ -2098,6 +2368,9 @@ def get_en_url_id(url: str) -> str | None:
 
 
 def set_url_id(url_id, url) -> None:
+    """
+    Associate a URL with a given URL ID for the current language in the URL mapping and persist the update.
+    """
     url_map, _ = read_url_map()
     if args.lang not in url_map:
         url_map[args.lang] = {}
@@ -2106,6 +2379,12 @@ def set_url_id(url_id, url) -> None:
 
 
 def encode_result_id(url_id, deck_w, deck_h, deck_x, deck_y, rotate, sheet) -> str:
+    """
+    Encode card image cropping and layout parameters into a unique result identifier string.
+    
+    Returns:
+        str: A hyphen-separated string containing the URL ID, deck dimensions, card position, rotation flag, and sheet index.
+    """
     return f"{url_id}-{deck_w}-{deck_h}-{deck_x}-{deck_y}-{1 if rotate else 0}-{sheet}"
 
 
@@ -2185,10 +2464,21 @@ result_set = set()
 
 
 def get_decks(card_obj):
+    """
+    Extracts and returns a list of deck ID and deck data pairs from a card object's 'CustomDeck' attribute.
+    
+    Returns:
+        List of tuples, each containing the deck ID as an integer and the corresponding deck data.
+    """
     return [(int(deck_id), deck) for deck_id, deck in card_obj["CustomDeck"].items()]
 
 
 def translate_sced_card(url, deck_w, deck_h, deck_x, deck_y, is_front, card, metadata) -> None:
+    """
+    Translates a single SCED card by determining its SE card type, processing its image, and appending its data for further generation.
+    
+    This function identifies the appropriate SE card template based on the ArkhamDB card type and properties, downloads and crops the relevant card image, calculates scaling and positioning, and appends the processed card data to the global SE card collection for subsequent CSV and image generation steps. Duplicate translations are avoided by tracking processed result IDs.
+    """
     card_type = card["type_code"]
     rotate = card_type in ["investigator", "agenda", "act"]
     sheet = 0 if is_front else 1
@@ -2307,6 +2597,11 @@ def translate_sced_card(url, deck_w, deck_h, deck_x, deck_y, is_front, card, met
 
 
 def translate_sced_card_object(card_obj, metadata, card) -> None:
+    """
+    Translates and processes a SCED card object, handling both front and back sides, and prepares card images and metadata for localization.
+    
+    This function determines the correct card data for each side, manages special cases for linked cards and locations, and invokes image translation for each relevant side. It accounts for exceptions where card face order or pack codes differ between ArkhamDB and SCED, and skips translation for generic or excluded card backs.
+    """
     deck_id, deck = get_decks(card_obj)[0]
     deck_w = deck["NumWidth"]
     deck_h = deck["NumHeight"]
@@ -2472,12 +2767,22 @@ def translate_sced_card_object(card_obj, metadata, card) -> None:
 
 
 def translate_sced_token_object(token_obj, metadata, card) -> None:
+    """
+    Translates a SCED token object by processing its image and metadata for localization.
+    
+    Determines the appropriate card side based on the token's description and invokes the card translation workflow for the token image.
+    """
     image_url = token_obj["CustomImage"]["ImageURL"]
     is_front = token_obj["Description"].endswith("Easy/Standard")
     translate_sced_card(image_url, 1, 1, 0, 0, is_front, card, metadata)
 
 
 def translate_sced_object(sced_obj, metadata, card, _1, _2) -> None:
+    """
+    Translates a SCED object by dispatching to the appropriate translation function based on its type.
+    
+    Depending on the object's "Name" field, this function processes card or token objects for localization and metadata transformation.
+    """
     if sced_obj["Name"] in ["Card", "CardCustom"]:
         translate_sced_card_object(sced_obj, metadata, card)
     elif sced_obj["Name"] == "Custom_Token":
@@ -2486,10 +2791,22 @@ def translate_sced_object(sced_obj, metadata, card, _1, _2) -> None:
 
 def is_translatable(ahdb_id):
     # NOTE: Skip minicards.
+    """
+    Determine if a card with the given ArkhamDB ID is eligible for translation.
+    
+    Returns:
+        bool: True if the card is not a minicard (i.e., its ID does not contain '-m'); otherwise, False.
+    """
     return "-m" not in ahdb_id
 
 
 def process_player_cards(callback: Callable) -> None:
+    """
+    Iterates over all player card files in the primary mod repository, loading their metadata and card data, and applies a callback function to each card object and its alternative states.
+    
+    Parameters:
+        callback (Callable): A function to process each card object, receiving the card object, metadata, card data, object filename, and parent card object as arguments.
+    """
     repo_folder = download_repo(args.mod_dir_primary, "argonui/SCED")
     player_folder = f"{repo_folder}/objects/AllPlayerCards.15bb07"
     for filename in os.listdir(player_folder):
@@ -2528,6 +2845,15 @@ def process_player_cards(callback: Callable) -> None:
 
 
 def process_encounter_cards(callback, **kwargs) -> None:
+    """
+    Processes encounter card files from campaign and scenario folders, applying a callback to each relevant card or deck object.
+    
+    Iterates through campaign and scenario JSON files in the secondary mod repository, recursively finds encounter card and deck objects, and invokes the provided callback for each. Skips files without ArkhamDB data and handles missing or malformed metadata gracefully.
+    
+    Parameters:
+    	callback (Callable): Function to apply to each found encounter card or deck object.
+    	include_decks (bool, optional): If True, includes deck objects in the processing. Defaults to False.
+    """
     include_decks = kwargs.get("include_decks", False)
     repo_folder = download_repo(args.mod_dir_secondary, "Chr1Z93/loadable-objects")
     folders = ["campaigns", "scenarios"]
@@ -2547,6 +2873,15 @@ def process_encounter_cards(callback, **kwargs) -> None:
             with open(campaign_filename, encoding="utf-8") as object_file:
 
                 def find_encounter_objects(en_obj):
+                    """
+                    Recursively searches for and returns all encounter card or scenario token objects within a nested object structure.
+                    
+                    Parameters:
+                        en_obj: The object or list of objects to search, typically parsed from a SCED or mod JSON file.
+                    
+                    Returns:
+                        A list of dictionaries representing encounter card or scenario token objects found within the input structure.
+                    """
                     if isinstance(en_obj, dict):
                         if include_decks and en_obj.get("Name") == "Deck":
                             results = find_encounter_objects(en_obj["ContainedObjects"])
@@ -2605,6 +2940,11 @@ def process_encounter_cards(callback, **kwargs) -> None:
 
 
 def write_csv() -> None:
+    """
+    Write SE card data for each card type to CSV files in the SE_Generator data directory.
+    
+    Existing CSV files are overwritten. Each file contains one row per card component, with columns corresponding to the component's properties.
+    """
     data_dir = "SE_Generator/data"
     recreate_dir(data_dir)
     for se_type in se_types:
@@ -2622,6 +2962,11 @@ def write_csv() -> None:
 
 def generate_images() -> None:
     # NOTE: Update SE font preferences before running the generation script.
+    """
+    Updates Strange Eons font preferences for the selected language and runs the image generation script.
+    
+    This function overwrites the SE preferences file with language-specific settings, then invokes the SE generation script to produce card images.
+    """
     lang_code, _ = get_lang_code_region()
     lang_preferences = f"translations/{lang_code}/preferences"
     print(f"Overwriting with {lang_preferences}...")
@@ -2651,6 +2996,11 @@ def generate_images() -> None:
 
 
 def pack_images() -> None:
+    """
+    Reassembles individual card images into deck images and saves them in a language-specific directory.
+    
+    For each card image in the SE_Generator data directory, this function decodes its position and orientation, pastes it into the appropriate location on the corresponding deck image, and writes the completed deck images to disk. Uses the English deck image as the base to preserve image quality.
+    """
     deck_images = {}
     url_map, _ = read_url_map()
     for image_dir in Path("SE_Generator/data").glob("*"):
@@ -2693,6 +3043,11 @@ def pack_images() -> None:
 
 
 def upload_images() -> None:
+    """
+    Uploads all deck images for the specified language to Dropbox and updates their shared download links.
+    
+    For each deck image in the language-specific directory, uploads the image to Dropbox (overwriting any existing file), manages shared links according to the `--new-link` argument, and updates the internal URL mapping with the direct download link.
+    """
     dbx = dropbox.Dropbox(args.dropbox_token)
     folder = f"/SCED_Localization_Deck_Images_{args.lang}"
     # NOTE: Create a folder if not already exists.
@@ -2727,6 +3082,11 @@ updated_files = {}
 
 
 def update_sced_card_object(card_obj, metadata, card, filename, root) -> None:
+    """
+    Update a SCED card object's metadata with translated names, traits, and image URLs.
+    
+    If card data is provided, updates the card's display name and description fields with translated values, including XP and taboo status when applicable. For scenario cards, sets the translated name in the 'Description' field. Updates image URLs in the card object to point to the correct language-specific shared links if available.
+    """
     url_map, url_id_map = read_url_map()
     updated_files[filename] = root
     if card:
@@ -2765,6 +3125,9 @@ def update_sced_card_object(card_obj, metadata, card, filename, root) -> None:
 
 
 def update_sced_files() -> None:
+    """
+    Write updated SCED JSON files to disk, ensuring scientific notation uses uppercase 'E' for consistency with TTS formatting.
+    """
     for filename, root in updated_files.items():
         with open(filename, "w", encoding="utf-8") as file:
             print(f"Writing {filename}...")

@@ -20,7 +20,9 @@ def ai_get_related_cards(
     ruling_text: str, source_card_code: str, existing_related_codes: list[str]
 ) -> list[str]:
     """
-    Placeholder for an AI call to identify related cards from ruling text.
+    Simulates identifying related card codes from ruling text.
+    
+    Returns a sorted list of related card codes, potentially adding a simulated new code based on keywords in the ruling text and excluding the source card code.
     """
     logging.info(
         f"AI_PLACEHOLDER: Identifying related cards for text (source: {source_card_code}): '{ruling_text[:100]}...'"
@@ -45,8 +47,9 @@ def ai_extract_provenance_details(
     ruling_text: str, existing_provenance: dict[str, any]
 ) -> dict[str, any]:
     """
-    Placeholder for an AI call to extract more detailed provenance.
-    (e.g., if a ruling text mentions "Matt said on Discord on Jan 5, 2023")
+    Simulates extraction of detailed provenance information from ruling text.
+    
+    If the ruling text references a Discord ruling, updates the provenance dictionary with a specific source type, source name, and a simulated source date. Returns the updated provenance dictionary.
     """
     logging.info(f"AI_PLACEHOLDER: Extracting provenance for: '{ruling_text[:100]}...'")
     updated_provenance = existing_provenance.copy()
@@ -63,9 +66,10 @@ def ai_extract_provenance_details(
 
 def ai_extract_q_and_a(raw_text: str) -> dict[str, str] | None:
     """
-    Placeholder for an AI call to identify and separate Q&A from a raw text blob.
-    This would be used for new, unstructured data sources.
-    Returns a dict with "question" and "answer" keys if successful.
+    Extracts a question and answer pair from raw text if formatted as Q&A.
+    
+    Returns:
+        dict: A dictionary with "question" and "answer" keys if extraction is successful; otherwise, None.
     """
     logging.info(f"AI_PLACEHOLDER: Extracting Q&A from: '{raw_text[:100]}...'")
     if raw_text.lower().startswith("q:") and "a:" in raw_text.lower():
@@ -79,7 +83,16 @@ def ai_extract_q_and_a(raw_text: str) -> dict[str, str] | None:
 
 def ai_generate_tags(ruling_text: str, existing_tags: list[str]) -> list[str]:
     """
-    Placeholder for an AI call to generate relevant tags/keywords.
+    Generate a list of relevant tags for a ruling based on its text content and existing tags.
+    
+    Adds tags such as "timing_window" or "cancellation_effect" if corresponding keywords are detected in the ruling text, merges them with any existing tags, and returns a sorted list.
+     
+    Parameters:
+        ruling_text (str): The text of the ruling to analyze.
+        existing_tags (list[str]): A list of tags already associated with the ruling.
+    
+    Returns:
+        list[str]: A sorted list of tags including both existing and newly generated tags.
     """
     logging.info(f"AI_PLACEHOLDER: Generating tags for: '{ruling_text[:100]}...'")
     new_tags = set(existing_tags)
@@ -96,8 +109,9 @@ def convert_external_ruling_to_standard_format(
     external_ruling: dict[str, Any],
 ) -> dict[str, Any] | None:
     """
-    Converts a raw external ruling into the standard ruling dictionary format.
-    Uses AI placeholders to extract Q&A and initial provenance.
+    Convert a raw external ruling dictionary into a standardized ruling format.
+    
+    Attempts to extract provenance details and question/answer structure using AI placeholder functions. Assigns a unique ID, determines the source card code from the text if possible, and sets the ruling type based on whether a Q&A structure is detected. Returns the standardized ruling dictionary, or None if the input lacks required raw text.
     """
     raw_text = external_ruling.get("raw_text")
     if not raw_text:
@@ -163,6 +177,17 @@ def convert_external_ruling_to_standard_format(
 
 
 def enrich_rulings(rulings_data: list[dict[str, any]]) -> list[dict[str, any]]:
+    """
+    Enriches a list of ruling dictionaries with AI-generated metadata such as related card codes, provenance details, question-and-answer extraction, and tags.
+    
+    Each ruling is processed to ensure required fields are present, selects the most informative text for AI analysis, and applies AI placeholder functions to update related cards, provenance, Q&A structure, and tags. Rulings lacking suitable text for enrichment are skipped but included in the output.
+    
+    Parameters:
+        rulings_data (list[dict[str, any]]): List of ruling dictionaries to be enriched.
+    
+    Returns:
+        list[dict[str, any]]: List of enriched ruling dictionaries with updated metadata.
+    """
     enriched_rulings: list[dict[str, any]] = []
     for ruling_dict in rulings_data:
         # Make a copy to avoid modifying the original list of dicts in-place if it's reused
@@ -239,6 +264,11 @@ def enrich_rulings(rulings_data: list[dict[str, any]]) -> list[dict[str, any]]:
 
 
 def main() -> None:
+    """
+    Processes and enriches card ruling data by merging existing processed rulings with external raw rulings, applying AI-based enrichment, and saving the results to an output file.
+    
+    Loads processed and external rulings from specified file paths, converts external rulings to a standard format, enriches all rulings with AI-generated metadata, and writes the enriched data to a JSON file. Handles missing files and I/O errors with logging.
+    """
     processed_input_path = constants.PROCESSED_RULINGS_V2_PATH
     external_input_path = constants.RAW_EXTERNAL_RULINGS_PATH
     output_path = constants.PROCESSED_RULINGS_V3_AI_PATH

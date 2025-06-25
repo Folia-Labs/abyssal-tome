@@ -76,6 +76,9 @@ def test_question_ruling_with_hypothesis(question, answer) -> None:
     ruling_type=sampled_from([RulingType.ERRATA, RulingType.CLARIFICATION, RulingType.NOTE]),
 )
 def test_ruling_content_with_hypothesis(content: list[str], ruling_type: RulingType) -> None:
+    """
+    Tests that a Ruling object with specified content and ruling type correctly sets its attributes and leaves question and answer unset.
+    """
     ruling = Ruling(ruling_type=ruling_type, content=content)
     assert ruling.ruling_type == ruling_type
     assert ruling.content == content

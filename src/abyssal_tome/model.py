@@ -76,6 +76,11 @@ class RulingModel(BaseModel):
 class CardDisplay:
     """Represents a card and all its associated rulings for display."""
     def __init__(self, code: str, name: str, rulings: list[RulingModel]):
+        """
+        Initialize a CardDisplay instance with the given card code, name, and a list of rulings.
+        
+        Rulings are sorted by their provenance source date, with missing dates treated as '0000'.
+        """
         self.code = code
         self.name = name
         self.rulings = sorted(rulings, key=lambda r: r.provenance.source_date or '0000')
@@ -89,6 +94,11 @@ CARD_INFO_DATA: dict[str, dict[str, any]] = {}
 # --- Data Loading Functions ---
 
 def load_card_data(file_path_str: str = "../assets/player_cards.json"): # Added _str suffix
+    """
+    Placeholder for loading card data from a JSON file.
+    
+    This function currently does not implement any loading logic and only logs an informational message. Actual card data loading should be implemented as needed.
+    """
     global CARD_INFO_DATA
     # file_path = Path(file_path_str) # Uncomment when Path is used
     logging.info(f"Card data loading placeholder from {file_path_str}.")
@@ -96,6 +106,11 @@ def load_card_data(file_path_str: str = "../assets/player_cards.json"): # Added 
 
 
 def load_rulings_data(file_path_str: str = "../assets/processed_rulings_v3_ai_enriched.json"):
+    """
+    Load and validate rulings data from a JSON file into the global ALL_RULINGS_DATA dictionary.
+    
+    Reads a list of rulings from the specified file, validates each entry as a RulingModel, and stores them by their ID. Logs errors for validation failures, missing files, or JSON decoding issues.
+    """
     global ALL_RULINGS_DATA
     file_path = Path(file_path_str)
     try:
@@ -120,6 +135,11 @@ def load_rulings_data(file_path_str: str = "../assets/processed_rulings_v3_ai_en
 
 
 def load_opinionated_rulings_data(file_path_str: str = "../assets/opinionated_rulings.json"):
+    """
+    Load opinionated rulings from a JSON file, validate them, and associate them with their corresponding official rulings.
+    
+    Reads opinionated rulings from the specified file, validates each entry, and groups them by the official ruling ID they reference. Associates validated opinions with their corresponding rulings in the global data store, logging warnings for opinions referencing non-existent rulings. Updates the global opinions mapping with the loaded data.
+    """
     global ALL_OPINIONS_DATA, ALL_RULINGS_DATA # ALL_OPINIONS_DATA was not global before
     file_path = Path(file_path_str)
     temp_opinions_map: dict[str, list[OpinionatedRulingModel]] = {}
@@ -158,6 +178,15 @@ def load_opinionated_rulings_data(file_path_str: str = "../assets/opinionated_ru
 # --- Helper Functions for Application --- # Renamed from "Views"
 
 def get_rulings_for_card(card_code: str) -> list[RulingModel]:
+    """
+    Retrieve all rulings associated with a given card code, including those where the card is either the source or related.
+    
+    Parameters:
+        card_code (str): The code of the card for which to find relevant rulings.
+    
+    Returns:
+        list[RulingModel]: A list of matching rulings sorted by provenance source date and ruling ID.
+    """
     relevant_rulings: dict[str, RulingModel] = {}
     for r_id, r_obj in ALL_RULINGS_DATA.items():
         if r_obj.source_card_code == card_code or card_code in r_obj.related_card_codes:
@@ -167,10 +196,21 @@ def get_rulings_for_card(card_code: str) -> list[RulingModel]:
 
 
 def get_ruling_by_id(ruling_id: str) -> RulingModel | None: # Added | None
+    """
+    Retrieve a ruling by its unique ID.
+    
+    Returns:
+        The RulingModel instance corresponding to the given ruling ID, or None if not found.
+    """
     return ALL_RULINGS_DATA.get(ruling_id)
 
 # Placeholder for loading card names, etc.
 def load_card_info_data(file_path_str: str = "../assets/cards_db.json"): # Example path
+    """
+    Placeholder for loading card information data from a JSON file.
+    
+    This function currently does not implement actual loading logic and only logs the intended file path.
+    """
     global CARD_INFO_DATA
     # Example: CARD_INFO_DATA = {"01001": {"name": "Roland Banks", "faction": "Guardian"}}
     # Actual implementation depends on how card data is stored/sourced.

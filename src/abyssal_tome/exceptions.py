@@ -9,10 +9,20 @@ class DataProcessingError(AbyssalTomeError):
     """Exception raised for errors in the data processing pipeline."""
 
     def __init__(self, message: str, underlying_error: Exception | None = None) -> None:
+        """
+        Initialize a DataProcessingError with a message and an optional underlying exception.
+        
+        Parameters:
+            message (str): Description of the data processing error.
+            underlying_error (Exception, optional): The original exception that caused this error, if any.
+        """
         super().__init__(message)
         self.underlying_error = underlying_error
 
     def __str__(self) -> str:
+        """
+        Return the string representation of the error, including the underlying cause if present.
+        """
         if self.underlying_error:
             return f"{super().__str__()} (Caused by: {self.underlying_error})"
         return super().__str__()
