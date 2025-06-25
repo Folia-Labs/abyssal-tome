@@ -2109,7 +2109,18 @@ def download_repo(repo_folder, repo):
     ensure_dir(args.repo_dir)
     repo_name = repo.split("/")[-1]
     repo_folder = f"{args.repo_dir}/{repo_name}"
+def download_repo(repo_folder, repo):
+    if Path(repo_folder).is_dir():
+        return repo_folder
+    # Validate repo format (owner/name)
+    if not re.match(r'^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$', repo):
+        raise ValueError(f"Invalid repository format: {repo}")
+    print(f"Cloning {repo}...")
+    ensure_dir(args.repo_dir)
+    repo_name = repo.split("/")[-1]
+    repo_folder = f"{args.repo_dir}/{repo_name}"
     subprocess.run(["git", "clone", "--quiet", f"https://github.com/{repo}.git", repo_folder])
+    return repo_folder
     return repo_folder
 
 
