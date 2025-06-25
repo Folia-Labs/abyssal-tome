@@ -112,14 +112,19 @@ def load_faqs(faqs_path: Path) -> dict[str, dict[str, str]]:
     Load FAQ data from a JSON file after validating the file's existence, type, extension, and non-emptiness.
     
     Parameters:
-    	faqs_path (Path): Path to the FAQ JSON file.
+    """
+    Load FAQ data from a JSON file after validating the file's existence, type, extension, and non-emptiness.
+    
+    Parameters:
+        faqs_path (Path): Path to the FAQ JSON file.
     
     Returns:
-    	dict[str, dict[str, str]]: Parsed FAQ data as a dictionary.
+        dict[str, dict[str, str]]: Parsed FAQ data as a dictionary.
     
     Raises:
-    	FileNotFoundError: If the file does not exist.
-    	ValueError: If the path is not a file, is not a JSON file, or is empty.
+        FileNotFoundError: If the file does not exist.
+        ValueError: If the path is not a file, is not a JSON file, or is empty.
+    """
     """
     if not faqs_path.exists():
         raise FileNotFoundError(f"File {faqs_path} does not exist.")
