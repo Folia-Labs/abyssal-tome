@@ -179,8 +179,8 @@ def append_span(spans_list: list[ft.TextSpan], text_content: str, style: ft.Text
     if text_content:
         spans_list.append(ft.TextSpan(text=text_content, style=style or ft.TextStyle(), on_click=on_click_handler))
 
--async def replace_special_tags(page: ft.Page, text_input: str) -> list[ft.TextSpan]:
-+def replace_special_tags(page: ft.Page, text_input: str) -> list[ft.TextSpan]:
+async def replace_special_tags(page: ft.Page, text_input: str) -> list[ft.TextSpan]:
+    """
      """
      Parses input text for special tags, markdown styles, and links, converting them into styled TextSpan objects for display.
 async def on_card_click(event: ft.ControlEvent, page: ft.Page, card_id: str) -> None:
