@@ -7,7 +7,6 @@ icon mappings, and configuration values used across multiple scripts and modules
 
 from pathlib import Path
 import re
-import re
 
 # --- Project Root ---
 # Assuming constants.py is in src/abyssal_tome/
