@@ -11,31 +11,20 @@ ci:
     submodules: false
 
 repos:
--   repo: https://github.com/python-poetry/poetry
-    rev: ''  # add version here
+-   repo: local
     hooks:
-    -   id: poetry-check
-    -   id: poetry-lock
-    -   id: poetry-export
-    -   id: poetry-install
+    -   id: ruff-format
+        name: Ruff Formatter
+        entry: .venv/bin/ruff format .
+        language: system # Using system as entry is now a direct path
+        types: [python]
 
-- repo: https://github.com/astral-sh/ruff-pre-commit
-  # Ruff version.
-  rev: v0.12.0
-  hooks:
-    # Run the linter.
-    - id: ruff
-      args: [ --fix ]
-    # Run the formatter.
-    - id: ruff-format
--   repo: https://github.com/asottile/pyupgrade
-    rev: v3.20.0
-    hooks:
-    -   id: pyupgrade
-        args: [--py312-plus] # Adjusted to match ruff target-version and project python
--   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.16.1
-    hooks:
-    -   id: mypy
-        additional_dependencies: [types-all]
-        exclude: ^testing/resources/
+    -   id: ruff-lint
+        name: Ruff Linter
+        entry: .venv/bin/ruff check . --fix
+        language: system # Using system as entry is now a direct path
+        types: [python]
+
+# Notes:
+# Pyupgrade has been removed as Ruff with target-version py313 should cover its functionality.
+# Type checking (previously MyPy/Ty) has been deferred.

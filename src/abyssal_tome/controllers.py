@@ -9,7 +9,7 @@ class CardController:
     def set_card_name(self, name) -> None:
         """
         Set the name attribute of the card model to the specified value.
-        
+
         Parameters:
             name: The new name to assign to the card model.
         """

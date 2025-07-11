@@ -5,13 +5,11 @@ import logging
 # from typing import List, Dict, Any, Optional # Replaced by built-in types or new syntax
 import uuid
 
-from bs4 import BeautifulSoup  # For stripping HTML if needed from original_html_snippet
-
 # We are working with dictionaries that conform to Ruling/Provenance models
 # but won't strictly parse them with Pydantic here to keep this script simpler.
 # The Pydantic models are defined in `process_new_format.py`.
-
 from abyssal_tome import constants  # Updated import path
+from bs4 import BeautifulSoup  # For stripping HTML if needed from original_html_snippet
 
 logging.basicConfig(level=logging.INFO)
 # DEFAULT_SOURCE_CARD_CODE_EXTERNAL is now in constants.py
@@ -24,7 +22,7 @@ def ai_get_related_cards(
 ) -> list[str]:
     """
     Simulates identifying related card codes from ruling text.
-    
+
     Returns a sorted list of related card codes, potentially adding a simulated new code based on keywords in the ruling text and excluding the source card code.
     """
     logging.info(
@@ -51,7 +49,7 @@ def ai_extract_provenance_details(
 ) -> dict[str, any]:
     """
     Simulates extraction of detailed provenance information from ruling text.
-    
+
     If the ruling text references a Discord ruling, updates the provenance dictionary with a specific source type, source name, and a simulated source date. Returns the updated provenance dictionary.
     """
     logging.info(f"AI_PLACEHOLDER: Extracting provenance for: '{ruling_text[:100]}...'")
@@ -70,7 +68,7 @@ def ai_extract_provenance_details(
 def ai_extract_q_and_a(raw_text: str) -> dict[str, str] | None:
     """
     Extracts a question and answer pair from raw text if formatted as Q&A.
-    
+
     Returns:
         dict: A dictionary with "question" and "answer" keys if extraction is successful; otherwise, None.
     """
@@ -87,13 +85,13 @@ def ai_extract_q_and_a(raw_text: str) -> dict[str, str] | None:
 def ai_generate_tags(ruling_text: str, existing_tags: list[str]) -> list[str]:
     """
     Generate a list of relevant tags for a ruling based on its text content and existing tags.
-    
+
     Adds tags such as "timing_window" or "cancellation_effect" if corresponding keywords are detected in the ruling text, merges them with any existing tags, and returns a sorted list.
-     
+
     Parameters:
         ruling_text (str): The text of the ruling to analyze.
         existing_tags (list[str]): A list of tags already associated with the ruling.
-    
+
     Returns:
         list[str]: A sorted list of tags including both existing and newly generated tags.
     """
@@ -114,7 +112,7 @@ def convert_external_ruling_to_standard_format(
 ) -> dict[str, any] | None:
     """
     Convert a raw external ruling dictionary into a standardized ruling format.
-    
+
     Attempts to extract provenance details and question/answer structure using AI placeholder functions. Assigns a unique ID, determines the source card code from the text if possible, and sets the ruling type based on whether a Q&A structure is detected. Returns the standardized ruling dictionary, or None if the input lacks required raw text.
     """
     raw_text = external_ruling.get("raw_text")
@@ -183,12 +181,12 @@ def convert_external_ruling_to_standard_format(
 def enrich_rulings(rulings_data: list[dict[str, any]]) -> list[dict[str, any]]:
     """
     Enriches a list of ruling dictionaries with AI-generated metadata such as related card codes, provenance details, question-and-answer extraction, and tags.
-    
+
     Each ruling is processed to ensure required fields are present, selects the most informative text for AI analysis, and applies AI placeholder functions to update related cards, provenance, Q&A structure, and tags. Rulings lacking suitable text for enrichment are skipped but included in the output.
-    
+
     Parameters:
         rulings_data (list[dict[str, any]]): List of ruling dictionaries to be enriched.
-    
+
     Returns:
         list[dict[str, any]]: List of enriched ruling dictionaries with updated metadata.
     """
@@ -267,7 +265,7 @@ def enrich_rulings(rulings_data: list[dict[str, any]]) -> list[dict[str, any]]:
 def main() -> None:
     """
     Processes and enriches card ruling data by merging existing processed rulings with external raw rulings, applying AI-based enrichment, and saving the results to an output file.
-    
+
     Loads processed and external rulings from specified file paths, converts external rulings to a standard format, enriches all rulings with AI-generated metadata, and writes the enriched data to a JSON file. Handles missing files and I/O errors with logging.
     """
     processed_input_path = constants.PROCESSED_RULINGS_V2_PATH

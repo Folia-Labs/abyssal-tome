@@ -5,8 +5,8 @@ This module centralizes project-wide constants including paths, regex patterns,
 icon mappings, and configuration values used across multiple scripts and modules.
 """
 
-from pathlib import Path
 import re
+from pathlib import Path
 
 # --- Project Root ---
 # Assuming constants.py is in src/abyssal_tome/
@@ -16,7 +16,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 ASSETS_DIR = PROJECT_ROOT / "assets"
 FAQS_DIR = PROJECT_ROOT / "faqs"
 SCHEMAS_DIR = ASSETS_DIR / "schemas"
-INDEX_DIR = PROJECT_ROOT / "indexdir" # For Whoosh index
+INDEX_DIR = PROJECT_ROOT / "indexdir"  # For Whoosh index
 
 # --- File Paths ---
 FAQS_FILE_PATH = FAQS_DIR / "faqs.json"
@@ -26,7 +26,7 @@ PROCESSED_RULINGS_V2_PATH = ASSETS_DIR / "processed_rulings_v2.json"
 PROCESSED_RULINGS_V3_AI_PATH = ASSETS_DIR / "processed_rulings_v3_ai_enriched.json"
 RAW_EXTERNAL_RULINGS_PATH = ASSETS_DIR / "raw_external_rulings.json"
 OPINIONATED_RULINGS_PATH = ASSETS_DIR / "opinionated_rulings.json"
-OLD_PROCESSED_DATA_PATH = ASSETS_DIR / "processed_data.json" # Original processed data for main.py
+OLD_PROCESSED_DATA_PATH = ASSETS_DIR / "processed_data.json"  # Original processed data for main.py
 
 # Schema files
 RULING_SCHEMA_JSON = SCHEMAS_DIR / "ruling_schema.json"
@@ -35,7 +35,7 @@ OPINION_SCHEMA_JSON = SCHEMAS_DIR / "opinion_schema.json"
 # Old data paths (relative to project root, assuming scripts run from root or handle paths appropriately)
 OLD_PLAYER_CARDS_PATH = PROJECT_ROOT / "player_cards.json"
 OLD_OTHER_CARDS_PATH = PROJECT_ROOT / "other_cards.json"
-OLD_FAQS_DIR_PATH_PROCESS_JSON = FAQS_DIR # For process_json.py that globs this dir
+OLD_FAQS_DIR_PATH_PROCESS_JSON = FAQS_DIR  # For process_json.py that globs this dir
 
 
 # --- Constants for scripts/process_new_format.py ---
@@ -53,17 +53,36 @@ RULING_STRIP_PATTERNS: list[str] = [
 ]
 
 # Regex patterns from process_new_format.py
-FAQ_VERSION_PATTERN = re.compile(r"(FAQ|Official FAQ|Errata Sheet)[,\s]*v?\.?\s*(\d+\.\d+[\w\d.-]*)\s*,\s*([\w\s]+\s\d{4})", re.IGNORECASE)
+FAQ_VERSION_PATTERN = re.compile(
+    r"(FAQ|Official FAQ|Errata Sheet)[,\s]*v?\.?\s*(\d+\.\d+[\w\d.-]*)\s*,\s*([\w\s]+\s\d{4})",
+    re.IGNORECASE,
+)
 CARD_LINK_PATTERN = re.compile(r"(?:arkhamdb\.com)?/card/(\d{5})")
 
 # --- Constants for Icon/Symbol Replacements (used in process_new_format.py and app.py) ---
 TAG_TO_LETTER: dict[str, str] = {
-    "willpower": "p", "agility": "a", "combat": "c", "intellect": "b",
-    "skull": "k", "cultist": "l", "tablet": "q", "elderthing": "n",
-    "autofail": "m", "eldersign": "o", "bless": "v", "curse": "w",
-    "frost": "x", "reaction": "!", "unique": "s", "mystic": "g",
-    "guardian": "f", "seeker": "h", "rogue": "d", "survivor": "e",
-    "free": "j", "action": "i",
+    "willpower": "p",
+    "agility": "a",
+    "combat": "c",
+    "intellect": "b",
+    "skull": "k",
+    "cultist": "l",
+    "tablet": "q",
+    "elderthing": "n",
+    "autofail": "m",
+    "eldersign": "o",
+    "bless": "v",
+    "curse": "w",
+    "frost": "x",
+    "reaction": "!",
+    "unique": "s",
+    "mystic": "g",
+    "guardian": "f",
+    "seeker": "h",
+    "rogue": "d",
+    "survivor": "e",
+    "free": "j",
+    "action": "i",
 }
 
 
@@ -74,21 +93,42 @@ DEFAULT_SOURCE_CARD_CODE_EXTERNAL = "00000"
 # --- Constants for scripts/scrape_arkhamdb_faq.py ---
 # Regex patterns for replacing HTML elements
 SPAN_RULE_PATTERN = re.compile(r'<span class="icon-([^"]+)"( title="[^"]*")?></span>')
-NEWLINE_RULE_PATTERN = re.compile(r'\r\n')
-CARD_LINK_RULE_PATTERN = re.compile(r'http(s?)://arkhamdb\.com/card/')
-RULES_LINK_RULE_PATTERN = re.compile(r'http(s?)://arkhamdb.com/rules#')
-PARAGRAPH_RULE_PATTERN = re.compile(r'<p>')
-CLOSE_PARAGRAPH_RULE_PATTERN = re.compile(r'</p>')
+NEWLINE_RULE_PATTERN = re.compile(r"\r\n")
+CARD_LINK_RULE_PATTERN = re.compile(r"http(s?)://arkhamdb\.com/card/")
+RULES_LINK_RULE_PATTERN = re.compile(r"http(s?)://arkhamdb.com/rules#")
+PARAGRAPH_RULE_PATTERN = re.compile(r"<p>")
+CLOSE_PARAGRAPH_RULE_PATTERN = re.compile(r"</p>")
 
 # Dictionary mapping cycle codes to their names
 CYCLES_MAP: dict[str, str] = {
-    '01': 'core', '02': 'dwl', '03': 'ptc', '04': 'tfa', '05': 'tcu',
-    '06': 'tde', '07': 'tic', '08': 'eoe', '09': 'tsk', '50': 'rtnotz',
-    '51': 'rtdwl', '52': 'rtptc', '53': 'rttfa', '54': 'rttcu',
-    '60': 'investigator', '61': 'investigator', '62': 'investigator',
-    '63': 'investigator', '64': 'investigator', '81': 'standalone',
-    '82': 'standalone', '83': 'standalone', '84': 'standalone',
-    '85': 'standalone', '86': 'standalone', '90': 'parallel', '98': 'books', '99': 'promo',
+    "01": "core",
+    "02": "dwl",
+    "03": "ptc",
+    "04": "tfa",
+    "05": "tcu",
+    "06": "tde",
+    "07": "tic",
+    "08": "eoe",
+    "09": "tsk",
+    "50": "rtnotz",
+    "51": "rtdwl",
+    "52": "rtptc",
+    "53": "rttfa",
+    "54": "rttcu",
+    "60": "investigator",
+    "61": "investigator",
+    "62": "investigator",
+    "63": "investigator",
+    "64": "investigator",
+    "81": "standalone",
+    "82": "standalone",
+    "83": "standalone",
+    "84": "standalone",
+    "85": "standalone",
+    "86": "standalone",
+    "90": "parallel",
+    "98": "books",
+    "99": "promo",
 }
 
 # --- Constants for scripts/process_json.py ---

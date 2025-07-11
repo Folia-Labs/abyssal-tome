@@ -1,7 +1,6 @@
 import flet as ft
 import pytest
 import regex as re
-
 from main import replace_special_tags
 
 # Constants used in the tests
@@ -14,16 +13,15 @@ TAG_TO_LETTER = {"{bold}": "B", "{italic}": "I"}
 def on_card_click(event, page, card_id) -> None:
     """
     Placeholder for a card click event handler.
-    
+
     Intended to handle actions when a card is clicked, receiving the event, page context, and card identifier.
     """
-    pass
 
 
 def append_span(spans, text, style=None, on_click=None) -> None:
     """
     Appends a TextSpan with optional style and click handler to the provided spans list.
-    
+
     Parameters:
         spans (list): The list to which the TextSpan will be appended.
         text (str): The text content for the TextSpan.
@@ -67,7 +65,7 @@ def test_replace_special_tags(
     # Arrange
     """
     Test the replace_special_tags function for correct span creation and logging behavior.
-    
+
     Verifies that the number of spans, warnings, and errors produced by replace_special_tags matches expectations for various input scenarios.
     """
     page = ft.Page()
@@ -76,9 +74,9 @@ def test_replace_special_tags(
     spans = replace_special_tags(page, ruling_text)
 
     # Assert
-    assert len(spans) == expected_spans_length, (
-        f"Test ID {test_id}: Unexpected number of spans created."
-    )
+    assert (
+        len(spans) == expected_spans_length
+    ), f"Test ID {test_id}: Unexpected number of spans created."
     assert (
         len([record for record in caplog.records if record.levelname == "WARNING"])
         == expected_warnings
