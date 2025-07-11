@@ -8,4 +8,4 @@
 # from .exceptions import ...
 
 # Version of the abyssal_tome package
-__version__ = "0.2.0" # Example version
+__version__ = "0.2.0"  # Example version

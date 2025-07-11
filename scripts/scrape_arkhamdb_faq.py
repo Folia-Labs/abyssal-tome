@@ -5,9 +5,8 @@ import re
 import aiohttp
 import requests
 import tqdm
+from abyssal_tome import constants  # Updated import path
 from tqdm.asyncio import tqdm_asyncio
-
-from abyssal_tome import constants # Updated import path
 
 # Regex patterns and cycles map moved to constants.py
 
@@ -15,7 +14,7 @@ from abyssal_tome import constants # Updated import path
 def fetch_cards() -> list[dict[str, any]]:  # Added type hint
     """
     Fetches all encounter cards from the ArkhamDB API.
-    
+
     Returns:
         A list of dictionaries, each representing a card with its associated data.
     """
@@ -33,7 +32,7 @@ async def fetch_faq(
 ) -> dict[str, any] | None:  # Added type hints
     """
     Asynchronously fetches the FAQ data for a given card from the ArkhamDB API.
-    
+
     Returns:
         The parsed FAQ JSON data as a dictionary if successful, or None if the card code is missing or an HTTP error occurs.
     """
@@ -53,12 +52,12 @@ async def fetch_faq(
 def parse_faqs(faqs: list[dict[str, any] | None]) -> dict[str, dict[str, str]]:  # Added type hint
     """
     Parse and clean a list of FAQ items, extracting relevant information for each card.
-    
+
     Each FAQ item is validated for required fields and cleaned using regex patterns to standardize the text. Only entries with a valid update date are included.
-    
+
     Parameters:
         faqs (list[dict[str, any] | None]): List of FAQ responses, where each item may be None or a list containing FAQ data.
-    
+
     Returns:
         dict[str, dict[str, str]]: A dictionary mapping card codes to their parsed FAQ entries, each containing the code, cleaned text, and update date.
     """
@@ -105,7 +104,7 @@ def parse_faqs(faqs: list[dict[str, any] | None]) -> dict[str, dict[str, str]]: 
 async def main() -> None:
     """
     Asynchronously fetches all ArkhamDB card FAQs, parses and cleans the data, and saves the results as a formatted JSON file.
-    
+
     This function retrieves the full set of cards, concurrently fetches their FAQ entries, processes and validates the FAQ data, and writes the cleaned output to the path specified in the constants module. Progress bars are displayed during fetching and parsing for user feedback.
     """
     cards = fetch_cards()

@@ -1,49 +1,55 @@
 [project]
-requires-python = ">=3.12"
-
-
-[tool.poetry]
-name = "faqml"
+name = "abyssal-tome"
 version = "0.1.0"
-description = ""
-authors = ["Dan Elkayam <dan.elkayam@gmail.com>"]
+description = "Python-powered application for Arkham Horror: The Card Game rulings and FAQs."
 readme = "README.md"
+requires-python = ">=3.13"
+license = { file = "LICENSE" } # Assuming a LICENSE file exists
+authors = [
+    { name = "Dan Elkayam", email = "dan.elkayam@gmail.com" }
+]
 
-[tool.poetry.dependencies]
-python = "^3.12"
-flet = "0.19.0"
-regex = "^2023.12.25"
-gql = "^3.5.0"
-aiohttp = "^3.9.3"
-# pytest = "^8.0.0" # Moved to dev dependencies
-flet-fastapi = "^0.19.0"
-tqdm = "^4.66.1"
-clipman = "^3.1.6"
-whoosh = "^2.7.4"
-dropbox = "^11.36.2"
-markdownify = "^0.11.6"
-markdown = "^3.5.2"
-mistletoe = "^1.3.0"
-setuptools = "^69.1.0"
-pyyaml = { version = "!=6.0.0,!=5.4.0,!=5.4.1" }
-doublemetaphone = {path = "B:/Downloads/doublemetaphone-1.1-cp312-cp312-win_amd64.whl"}
-dedupe = {path = "B:/Downloads/wheels-5/dist/dedupe-2.0.23-cp312-cp312-win_amd64.whl"}
-markdown-it-py = "^3.0.0"
-linkify-it-py = "^2.0.3"
-mdit-py-plugins = "^0.4.0"
-bs4 = "^0.0.2"
-hypothesis = "^6.98.9"
+dependencies = [
+    "flet==0.19.0",
+    "regex>=2023.12.25",
+    "gql>=3.5.0",
+    "aiohttp>=3.9.3",
+    "flet-fastapi>=0.19.0",
+    "tqdm>=4.66.1",
+    "clipman>=3.1.6",
+    "whoosh>=2.7.4",
+    "dropbox>=11.36.2",
+    "markdownify>=0.11.6",
+    "markdown>=3.5.2",
+    "mistletoe>=1.3.0",
+    "pyyaml!=6.0.0,!=5.4.0,!=5.4.1",
+    # Local .whl files for doublemetaphone and dedupe have been removed.
+    # They need to be added correctly for uv, perhaps by vendoring or making paths relative.
+    "markdown-it-py>=3.0.0",
+    "linkify-it-py>=2.0.3",
+    "mdit-py-plugins>=0.4.0",
+    "beautifulsoup4", # Explicitly beautifulsoup4
+    "hypothesis>=6.98.9",
+    # Dependencies for planned refactor
+    "sqlalchemy",
+    "pydantic",
+    "python-dotenv",
+    "openai",
+    "fastapi",
+    "uvicorn[standard]",
+    "typer"
+]
 
-
-[tool.poetry.group.dev.dependencies]
-ruff = "^0.2.1" # Match the version in pre-commit or use a recent one
-pytest = "^8.0.0" # Pytest was already in main deps, move to dev? Or keep if tests run in prod context for some reason. For now, adding ruff here.
-# If pytest is only for dev, it should be here. Let's assume it can be moved for typical projects.
-# Keeping pytest in main deps for now if that was intentional.
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff==0.4.8", # Pinning to a specific recent version
+    "pre-commit>=4.2.0" # Added pre-commit
+]
 
 [build-system]
-requires = ["poetry-core>=1.9.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools>=61.0"] # Standard build system for non-Poetry
+build-backend = "setuptools.build_meta"
 
 
 [tool.ruff]
@@ -51,7 +57,7 @@ cache-dir = ".cache/ruff"
 
 line-length = 100
 
-target-version = "py312"
+target-version = "py313" # Updated to Python 3.13
 
 lint.select = [
     "A",  # prevent using keywords that clobber python builtins

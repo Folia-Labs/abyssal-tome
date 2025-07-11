@@ -6,15 +6,15 @@ class CardView:
         Parameters:
             card: The card object to be displayed.
         """
-        ...  # logic to display a card
+        # logic to display a card
 
 
 class RulingView:
     def display_ruling(self, ruling) -> None:
         """
         Display the provided ruling to the user interface or output.
-        
+
         Parameters:
             ruling: The ruling object or data to be displayed.
         """
-        ...  # logic to display a ruling
+        # logic to display a ruling

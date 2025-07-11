@@ -162,8 +162,8 @@ def process_json_file(file_path, card_names):  # Fallback to current time if not
     Processes a JSON file containing card rulings, extracting and cleaning each ruling, and mapping them to their corresponding card names.
     
     Parameters:
-        file_path (str or Path): Path to the JSON file containing rulings.
-        card_names (dict): Mapping of card codes to card names.
+        file_path(str or Path): Path to the JSON file containing rulings.
+        card_names(dict): Mapping of card codes to card names.
     
     Returns:
         dict: A dictionary mapping card names to lists of processed ruling entries.
