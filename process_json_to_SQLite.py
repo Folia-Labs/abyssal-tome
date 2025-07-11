@@ -62,6 +62,7 @@ def process_and_insert_data(data: list) -> None:
             source_updated=datetime.datetime.strptime(
                 item["source"]["updated"], "%d %B %Y"
             ).replace(tzinfo=datetime.UTC)
+
             if item["source"]["updated"]
             else None,
             source_type=item["source"]["type"],

@@ -107,9 +107,6 @@ TEXT_TO_RULING_TYPE: dict[str, RulingType] = {
 
 
 def load_faqs(faqs_path: Path) -> dict[str, dict[str, str]]:
-
-    # Path validation and loading logic
-def load_faqs(faqs_path: Path) -> dict[str, dict[str, str]]:
     """
     Load FAQ data from a JSON file after validating the file's existence, type, extension, and non-emptiness.
 
