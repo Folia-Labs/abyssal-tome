@@ -1,7 +1,8 @@
 import datetime
 import json
 import logging
-
+import os
+from openai import OpenAI
 # from typing import List, Dict, Any, Optional # Replaced by built-in types or new syntax
 import uuid
 
@@ -14,6 +15,26 @@ from bs4 import BeautifulSoup  # For stripping HTML if needed from original_html
 logging.basicConfig(level=logging.INFO)
 # DEFAULT_SOURCE_CARD_CODE_EXTERNAL is now in constants.py
 
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
+def call_openai_api(prompt: str, model: str = "gpt-4o") -> dict | None:
+    """
+    Calls the OpenAI API with a given prompt and returns the JSON response.
+    """
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant designed to output JSON."},
+                {"role": "user", "content": prompt},
+            ],
+            response_format={"type": "json_object"},
+        )
+        return json.loads(response.choices[0].message.content)
+    except Exception as e:
+        logging.error(f"Error calling OpenAI API: {e}")
+        return None
+
 # --- Placeholder AI Functions ---
 
 
@@ -21,87 +42,109 @@ def ai_get_related_cards(
     ruling_text: str, source_card_code: str, existing_related_codes: list[str]
 ) -> list[str]:
     """
-    Simulates identifying related card codes from ruling text.
-
-    Returns a sorted list of related card codes, potentially adding a simulated new code based on keywords in the ruling text and excluding the source card code.
+    Identifies related card codes from ruling text using an LLM.
     """
     logging.info(
-        f"AI_PLACEHOLDER: Identifying related cards for text (source: {source_card_code}): '{ruling_text[:100]}...'"
+        f"AI: Identifying related cards for text (source: {source_card_code}): '{ruling_text[:100]}...'"
     )
-    # Simulate finding one new card code not already present
-    # In a real scenario, this would involve an LLM call.
-    simulated_new_code = "ai_card_01"
-    if "important_card_mentioned" in ruling_text.lower():  # Example trigger
-        simulated_new_code = "01001"  # Example: Roland Banks
+    prompt = f"""
+    Given the following ruling text for the card with code '{source_card_code}', identify any other card codes mentioned in the text.
+    Card codes are 5-digit strings.
+    Return a JSON object with a single key "related_card_codes" containing a list of the identified card codes.
+    Do not include the source card code '{source_card_code}' in the list.
 
-    combined_codes = set(existing_related_codes)
-    if simulated_new_code != source_card_code:
-        combined_codes.add(simulated_new_code)
-
-    # Remove source_card_code if it accidentally got added
-    combined_codes.discard(source_card_code)
-
-    return sorted(combined_codes)
+    Ruling text:
+    ---
+    {ruling_text}
+    ---
+    """
+    response = call_openai_api(prompt)
+    if response and "related_card_codes" in response:
+        newly_identified_codes = response["related_card_codes"]
+        combined_codes = set(existing_related_codes)
+        combined_codes.update(newly_identified_codes)
+        combined_codes.discard(source_card_code)
+        return sorted(list(combined_codes))
+    return sorted(list(set(existing_related_codes)))
 
 
 def ai_extract_provenance_details(
     ruling_text: str, existing_provenance: dict[str, any]
 ) -> dict[str, any]:
     """
-    Simulates extraction of detailed provenance information from ruling text.
-
-    If the ruling text references a Discord ruling, updates the provenance dictionary with a specific source type, source name, and a simulated source date. Returns the updated provenance dictionary.
+    Extracts detailed provenance information from ruling text using an LLM.
     """
-    logging.info(f"AI_PLACEHOLDER: Extracting provenance for: '{ruling_text[:100]}...'")
+    logging.info(f"AI: Extracting provenance for: '{ruling_text[:100]}...'")
+    prompt = f"""
+    Given the following ruling text, extract the source name and date.
+    The source name is often in the format "FAQ, v.X.Y, Month Year".
+    The date should be in ISO 8601 format (YYYY-MM-DD).
+    Return a JSON object with "source_name" and "source_date" keys.
+    If a value is not found, the corresponding key should have a value of null.
+
+    Ruling text:
+    ---
+    {ruling_text}
+    ---
+    """
+    response = call_openai_api(prompt)
     updated_provenance = existing_provenance.copy()
-    if "discord ruling" in ruling_text.lower():
-        updated_provenance["source_type"] = "discord_community_ruling"
-        updated_provenance["source_name"] = (
-            existing_provenance.get("source_name") or "Discord Snippet"
-        )
-        # Simulate extracting a date
-        if not updated_provenance.get("source_date"):
-            updated_provenance["source_date"] = "2023-01-05T00:00:00Z"  # Simulated date
+    if response:
+        if response.get("source_name"):
+            updated_provenance["source_name"] = response["source_name"]
+        if response.get("source_date"):
+            updated_provenance["source_date"] = response["source_date"]
     return updated_provenance
 
 
 def ai_extract_q_and_a(raw_text: str) -> dict[str, str] | None:
     """
-    Extracts a question and answer pair from raw text if formatted as Q&A.
-
-    Returns:
-        dict: A dictionary with "question" and "answer" keys if extraction is successful; otherwise, None.
+    Extracts a question and answer pair from raw text using an LLM.
     """
-    logging.info(f"AI_PLACEHOLDER: Extracting Q&A from: '{raw_text[:100]}...'")
-    if raw_text.lower().startswith("q:") and "a:" in raw_text.lower():
-        parts = raw_text.split("A:", 1) if "A:" in raw_text else raw_text.split("a:", 1)
-        question = parts[0][2:].strip()
-        answer = parts[1].strip() if len(parts) > 1 else ""
-        if question and answer:
-            return {"question": question, "answer": answer}
+    logging.info(f"AI: Extracting Q&A from: '{raw_text[:100]}...'")
+    prompt = f"""
+    Given the following text, extract the question and answer.
+    The text may be prefixed with "Q:" and "A:".
+    Return a JSON object with "question" and "answer" keys.
+    If the text does not appear to be a question and answer, return null for both keys.
+
+    Text:
+    ---
+    {raw_text}
+    ---
+    """
+    response = call_openai_api(prompt)
+    if response and response.get("question") and response.get("answer"):
+        return {
+            "question": response["question"],
+            "answer": response["answer"],
+        }
     return None
 
 
 def ai_generate_tags(ruling_text: str, existing_tags: list[str]) -> list[str]:
     """
-    Generate a list of relevant tags for a ruling based on its text content and existing tags.
-
-    Adds tags such as "timing_window" or "cancellation_effect" if corresponding keywords are detected in the ruling text, merges them with any existing tags, and returns a sorted list.
-
-    Parameters:
-        ruling_text (str): The text of the ruling to analyze.
-        existing_tags (list[str]): A list of tags already associated with the ruling.
-
-    Returns:
-        list[str]: A sorted list of tags including both existing and newly generated tags.
+    Generates relevant tags for a ruling based on its text content using an LLM.
     """
-    logging.info(f"AI_PLACEHOLDER: Generating tags for: '{ruling_text[:100]}...'")
-    new_tags = set(existing_tags)
-    if "timing" in ruling_text.lower():
-        new_tags.add("timing_window")
-    if "cancel" in ruling_text.lower():
-        new_tags.add("cancellation_effect")
-    return sorted(new_tags)
+    logging.info(f"AI: Generating tags for: '{ruling_text[:100]}...'")
+    prompt = f"""
+    Given the following ruling text, generate a list of relevant tags.
+    Tags should be specific and concise, for example: "timing_window", "cancellation_effect", "enemy_interaction", "player_cards", "mythos_phase".
+    Return a JSON object with a single key "tags" containing a list of the generated tags.
+
+    Ruling text:
+    ---
+    {ruling_text}
+    ---
+    """
+    response = call_openai_api(prompt)
+    newly_generated_tags = set()
+    if response and "tags" in response:
+        newly_generated_tags.update(response["tags"])
+
+    combined_tags = set(existing_tags)
+    combined_tags.update(newly_generated_tags)
+    return sorted(list(combined_tags))
 
 
 # --- Conversion for External Rulings ---
