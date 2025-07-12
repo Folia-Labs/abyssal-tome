@@ -28,7 +28,7 @@ def call_openai_api(prompt: str, model: str = "gpt-4o") -> dict | None:
                 {"role": "system", "content": "You are a helpful assistant designed to output JSON."},
                 {"role": "user", "content": prompt},
             ],
-            response_format={"type": "json_object"},
+            response_format="json",
         )
         return json.loads(response.choices[0].message.content)
     except Exception as e:
