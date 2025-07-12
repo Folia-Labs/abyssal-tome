@@ -30,7 +30,10 @@ def call_openai_api(prompt: str, model: str = "gpt-4o") -> dict | None:
             ],
             response_format="json",
         )
-        return json.loads(response.choices[0].message.content)
+        content = response.choices[0].message.content
+        if isinstance(content, dict):
+            return content
+        return json.loads(content)
     except Exception as e:
         logging.error(f"Error calling OpenAI API: {e}")
         return None
