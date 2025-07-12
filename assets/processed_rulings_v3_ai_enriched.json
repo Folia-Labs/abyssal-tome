@@ -1,0 +1,56 @@
+[
+  {
+    "id": "f787ed89-a728-410b-be0e-dcb3d6ed118c",
+    "source_card_code": "00000",
+    "related_card_codes": [],
+    "provenance": {
+      "source_type": "discord_mythosbusters_rules",
+      "source_name": null,
+      "source_date": null,
+      "retrieval_date": "2024-03-16T10:00:00Z",
+      "source_url": "https://discord.com/channels/mythosbusters/1234567890"
+    },
+    "original_html_snippet": "UserX: Quick question about [Lucky!]. If I fail by 2, can I play two copies to pass?\nMJNewman_FFG: No, Lucky! (0) says 'If this skill test is successful instead'. Once the first Lucky resolves and makes the test successful, the trigger condition for the second Lucky is no longer met. (Approx Dec 2022)",
+    "tags": [],
+    "ruling_type": "CLARIFICATION",
+    "question": null,
+    "answer": null,
+    "text": "UserX: Quick question about [Lucky!]. If I fail by 2, can I play two copies to pass?\nMJNewman_FFG: No, Lucky! (0) says 'If this skill test is successful instead'. Once the first Lucky resolves and makes the test successful, the trigger condition for the second Lucky is no longer met. (Approx Dec 2022)"
+  },
+  {
+    "id": "07f645bc-da8e-45db-9c3a-3330d8585f87",
+    "source_card_code": "00000",
+    "related_card_codes": [],
+    "provenance": {
+      "source_type": "bgg_card_comment",
+      "source_name": null,
+      "source_date": null,
+      "retrieval_date": "2024-03-16T10:05:00Z",
+      "source_url": "https://boardgamegeek.com/arkham-horror-the-card-game/card/some-card/forums/0"
+    },
+    "original_html_snippet": "I saw a ruling somewhere that said Machete's bonus damage applies against Massive enemies if you're engaged with them. Was that official? Seems to be from an old email.",
+    "tags": [],
+    "ruling_type": "CLARIFICATION",
+    "question": null,
+    "answer": null,
+    "text": "I saw a ruling somewhere that said Machete's bonus damage applies against Massive enemies if you're engaged with them. Was that official? Seems to be from an old email."
+  },
+  {
+    "id": "67ff66c3-a24e-46a2-9d28-08298b3e6b9a",
+    "source_card_code": "00000",
+    "related_card_codes": [],
+    "provenance": {
+      "source_type": "generic_forum_post",
+      "source_name": null,
+      "source_date": null,
+      "retrieval_date": "2024-03-16T10:10:00Z",
+      "source_url": "someforum.com/thread/123"
+    },
+    "original_html_snippet": "Q: Can [Working a Hunch] be played if there are no clues at your location? A: The card says 'Discover 1 clue at your location'. If there are no clues to discover, you cannot play the card, as you cannot resolve its effect. This is a general game principle for 'discover' effects. (Source: FFG Email ruling, early 2018)",
+    "tags": [],
+    "ruling_type": "CLARIFICATION",
+    "question": null,
+    "answer": null,
+    "text": "Q: Can [Working a Hunch] be played if there are no clues at your location? A: The card says 'Discover 1 clue at your location'. If there are no clues to discover, you cannot play the card, as you cannot resolve its effect. This is a general game principle for 'discover' effects. (Source: FFG Email ruling, early 2018)"
+  }
+]
