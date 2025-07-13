@@ -2,6 +2,7 @@ import datetime
 import json
 import logging
 import os
+import sys
 from openai import OpenAI
 # from typing import List, Dict, Any, Optional # Replaced by built-in types or new syntax
 import uuid
@@ -13,11 +14,16 @@ from abyssal_tome import constants  # Updated import path
 from bs4 import BeautifulSoup  # For stripping HTML if needed from original_html_snippet
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 # DEFAULT_SOURCE_CARD_CODE_EXTERNAL is now in constants.py
 
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+api_key = os.environ.get("OPENAI_API_KEY")
+if not api_key:
+    logger.error("OPENAI_API_KEY environment variable not set. Please set it before running this script.")
+    sys.exit(1)
+client = OpenAI(api_key=api_key)
 
-def call_openai_api(prompt: str, model: str = "gpt-4o") -> dict | None:
+def call_openai_api(prompt: str, model: str = os.environ.get("OPENAI_MODEL", "gpt-4o")) -> dict | None:
     """
     Calls the OpenAI API with a given prompt and returns the JSON response.
     """
@@ -30,9 +36,12 @@ def call_openai_api(prompt: str, model: str = "gpt-4o") -> dict | None:
             ],
             response_format={"type": "json_object"},
         )
-        return json.loads(response.choices[0].message.content)
+        content = response.choices[0].message.content
+        if isinstance(content, dict):
+            return content
+        return json.loads(content)
     except Exception as e:
-        logging.error(f"Error calling OpenAI API: {e}")
+        logger.error(f"Error calling OpenAI API: {e}")
         return None
 
 # --- Placeholder AI Functions ---
@@ -44,7 +53,7 @@ def ai_get_related_cards(
     """
     Identifies related card codes from ruling text using an LLM.
     """
-    logging.info(
+    logger.info(
         f"AI: Identifying related cards for text (source: {source_card_code}): '{ruling_text[:100]}...'"
     )
     prompt = f"""
@@ -74,7 +83,7 @@ def ai_extract_provenance_details(
     """
     Extracts detailed provenance information from ruling text using an LLM.
     """
-    logging.info(f"AI: Extracting provenance for: '{ruling_text[:100]}...'")
+    logger.info(f"AI: Extracting provenance for: '{ruling_text[:100]}...'")
     prompt = f"""
     Given the following ruling text, extract the source name and date.
     The source name is often in the format "FAQ, v.X.Y, Month Year".
@@ -101,7 +110,7 @@ def ai_extract_q_and_a(raw_text: str) -> dict[str, str] | None:
     """
     Extracts a question and answer pair from raw text using an LLM.
     """
-    logging.info(f"AI: Extracting Q&A from: '{raw_text[:100]}...'")
+    logger.info(f"AI: Extracting Q&A from: '{raw_text[:100]}...'")
     prompt = f"""
     Given the following text, extract the question and answer.
     The text may be prefixed with "Q:" and "A:".
@@ -126,7 +135,7 @@ def ai_generate_tags(ruling_text: str, existing_tags: list[str]) -> list[str]:
     """
     Generates relevant tags for a ruling based on its text content using an LLM.
     """
-    logging.info(f"AI: Generating tags for: '{ruling_text[:100]}...'")
+    logger.info(f"AI: Generating tags for: '{ruling_text[:100]}...'")
     prompt = f"""
     Given the following ruling text, generate a list of relevant tags.
     Tags should be specific and concise, for example: "timing_window", "cancellation_effect", "enemy_interaction", "player_cards", "mythos_phase".
@@ -160,7 +169,7 @@ def convert_external_ruling_to_standard_format(
     """
     raw_text = external_ruling.get("raw_text")
     if not raw_text:
-        logging.warning(
+        logger.warning(
             f"External ruling skipped due to missing raw_text: {external_ruling.get('source_url_or_context')}"
         )
         return None
@@ -263,7 +272,7 @@ def enrich_rulings(rulings_data: list[dict[str, any]]) -> list[dict[str, any]]:
             text_for_ai = enriched_ruling["original_html_snippet"]
 
         if not text_for_ai:
-            logging.warning(
+            logger.warning(
                 f"Skipping AI enrichment for ruling ID {enriched_ruling.get('id')} due to no text."
             )
             enriched_rulings.append(enriched_ruling)
@@ -319,33 +328,33 @@ def main() -> None:
 
     # Load already processed rulings
     if not processed_input_path.exists():
-        logging.warning(
+        logger.warning(
             f"Processed rulings file not found: {processed_input_path}. Starting with empty list."
         )
     else:
         try:
             with processed_input_path.open("r", encoding="utf-8") as f:
                 all_rulings_to_process.extend(json.load(f))
-            logging.info(
+            logger.info(
                 f"Loaded {len(all_rulings_to_process)} rulings from {processed_input_path}"
             )
         except json.JSONDecodeError as e:
-            logging.error(f"Error decoding JSON from {processed_input_path}: {e}")
+            logger.error(f"Error decoding JSON from {processed_input_path}: {e}")
             return
         except OSError as e:
-            logging.error(f"Error reading from {processed_input_path}: {e}")
+            logger.error(f"Error reading from {processed_input_path}: {e}")
             return
 
     # Load and convert external rulings
     if not external_input_path.exists():
-        logging.warning(
+        logger.warning(
             f"External rulings file not found: {external_input_path}. No external rulings will be added."
         )
     else:
         try:
             with external_input_path.open("r", encoding="utf-8") as f:
                 raw_external_data = json.load(f)
-            logging.info(
+            logger.info(
                 f"Loaded {len(raw_external_data)} raw external entries from {external_input_path}"
             )
 
@@ -355,15 +364,15 @@ def main() -> None:
                 if standardized:
                     converted_external_rulings.append(standardized)
 
-            logging.info(
+            logger.info(
                 f"Converted {len(converted_external_rulings)} external rulings to standard format."
             )
             all_rulings_to_process.extend(converted_external_rulings)
 
         except json.JSONDecodeError as e:
-            logging.error(f"Error decoding JSON from {external_input_path}: {e}")
+            logger.error(f"Error decoding JSON from {external_input_path}: {e}")
         except OSError as e:
-            logging.error(f"Error reading from {external_input_path}: {e}")
+            logger.error(f"Error reading from {external_input_path}: {e}")
 
     # Perform AI enrichment on the combined list
     final_rulings = enrich_rulings(all_rulings_to_process)
@@ -373,11 +382,11 @@ def main() -> None:
             json.dump(
                 final_rulings, f, indent=2, ensure_ascii=False, default=str
             )  # Add default=str for any non-serializable types like datetime
-        logging.info(
+        logger.info(
             f"Successfully enriched a total of {len(final_rulings)} rulings and saved to {output_path}"
         )
     except OSError as e:
-        logging.error(f"Error writing enriched rulings to {output_path}: {e}")
+        logger.error(f"Error writing enriched rulings to {output_path}: {e}")
 
 
 if __name__ == "__main__":

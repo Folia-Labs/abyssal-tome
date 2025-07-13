@@ -25,6 +25,12 @@ repos:
         language: system # Using system as entry is now a direct path
         types: [python]
 
+    -   id: pyright
+        name: Pyright
+        entry: .venv/bin/pyright
+        language: system
+        types: [python]
+
 # Notes:
 # Pyupgrade has been removed as Ruff with target-version py313 should cover its functionality.
 # Type checking (previously MyPy/Ty) has been deferred.
