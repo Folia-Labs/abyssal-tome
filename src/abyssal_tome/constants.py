@@ -82,6 +82,8 @@ TAG_TO_LETTER: dict[str, str] = {
     "rogue": "d",
     "survivor": "e",
     "free": "j",
+    "fast": "j",
+    "wild": "z",
     "action": "i",
 }
 

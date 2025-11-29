@@ -12,23 +12,25 @@ import clipman
 import flet as ft
 import flet_fastapi
 import regex as reg
-import requests
 from gql import Client, gql
 from gql.transport.aiohttp import AIOHTTPTransport as GQL_Transport
 from starlette.middleware.cors import CORSMiddleware
 from tqdm.auto import tqdm
 from whoosh.fields import ID, TEXT, Schema
-from whoosh.index import create_in, open_dir
+from whoosh.index import create_in
 from whoosh.writing import AsyncWriter
 
-from .utils import debounce  # Corrected relative import
 from . import constants  # Import constants from the package
+from .utils import debounce  # Corrected relative import
 
 logging.basicConfig(level=logging.WARNING, stream=sys.stdout)
 
 # DEFAULT_FLET_PATH and DEFAULT_FLET_PORT are now in constants.py
 
-clipman.init()
+try:
+    clipman.init()
+except Exception as e:
+    logging.warning(f"clipman.init() failed: {e}")
 
 schema = Schema(
     card_name=ID(stored=True),
@@ -55,6 +57,7 @@ class EntryType(StrEnum):
 class QAType(StrEnum):
     QUESTION = "question"
     ANSWER = "answer"
+
 
 # Use TAG_TO_LETTER from constants to ensure consistency
 
@@ -88,7 +91,7 @@ def load_json_data() -> dict:
     # until model.py loading is fully integrated.
     """
     Load and return card rulings data from the local JSON file.
-    
+
     Returns:
         dict: Parsed JSON data containing card rulings and related information.
     """
@@ -102,15 +105,15 @@ def load_json_data() -> dict:
 def highlight_text(span: ft.TextSpan, search_term: str) -> list[ft.TextSpan]:
     """
     Highlight occurrences of a search term within a TextSpan, returning new spans with background color applied to matches.
-    
+
     If the span represents a tag icon matching the search term, highlights the entire icon. Otherwise, splits the span into segments, applying a highlight style to each substring that matches the search term. Returns the resulting list of TextSpans, or the original span if no matches are found.
-    
+
     Parameters:
-    	span (ft.TextSpan): The text span to search and highlight within.
-    	search_term (str): The term to highlight.
-    
+        span (ft.TextSpan): The text span to search and highlight within.
+        search_term (str): The term to highlight.
+
     Returns:
-    	list[ft.TextSpan]: A list of text spans with highlighted matches.
+        list[ft.TextSpan]: A list of text spans with highlighted matches.
     """
     term_pattern = reg.escape(search_term, special_only=True, literal_spaces=True)
     for tag_name_in_dict, icon_char in TAG_TO_LETTER.items():  # Corrected variable name
@@ -161,11 +164,11 @@ def highlight_text(span: ft.TextSpan, search_term: str) -> list[ft.TextSpan]:
 async def highlight_spans(text_spans: list[ft.TextSpan], search_term: str) -> list[ft.TextSpan]:
     """
     Highlights all occurrences of a search term within a list of TextSpan objects.
-    
+
     Parameters:
         text_spans (list[ft.TextSpan]): The list of text spans to process.
         search_term (str): The term to highlight within the text spans.
-    
+
     Returns:
         list[ft.TextSpan]: A new list of TextSpan objects with matching substrings highlighted.
     """
@@ -175,10 +178,15 @@ async def highlight_spans(text_spans: list[ft.TextSpan], search_term: str) -> li
     return highlighted_spans
 
 
-def append_span(spans_list: list[ft.TextSpan], text_content: str, style: ft.TextStyle | None = None, on_click_handler=None) -> None:  # Renamed variables
+def append_span(
+    spans_list: list[ft.TextSpan],
+    text_content: str,
+    style: ft.TextStyle | None = None,
+    on_click_handler=None,
+) -> None:  # Renamed variables
     """
     Appends a new TextSpan with the specified text, style, and optional click handler to the provided list if the text is not empty.
-    
+
     Parameters:
         spans_list (list[ft.TextSpan]): The list to which the new TextSpan will be added.
         text_content (str): The text content for the new TextSpan.
@@ -186,19 +194,78 @@ def append_span(spans_list: list[ft.TextSpan], text_content: str, style: ft.Text
         on_click_handler (callable, optional): An optional click event handler for the TextSpan.
     """
     if text_content:
-        spans_list.append(ft.TextSpan(text=text_content, style=style or ft.TextStyle(), on_click=on_click_handler))
+        spans_list.append(
+            ft.TextSpan(text=text_content, style=style or ft.TextStyle(), on_click=on_click_handler)
+        )
 
 
 async def replace_special_tags(page: ft.Page, text_input: str) -> list[ft.TextSpan]:
     """
-     """
-     Parses input text for special tags, markdown styles, and links, converting them into styled TextSpan objects for display.
+    Parses input text for special tags, markdown styles, and links, converting them into styled TextSpan objects for display.
+    """
+    spans = []
+    current_pos = 0
+
+    # We need to iterate over matches. regex.finditer works.
+    for match in ALL_PATTERN.finditer(text_input):
+        start, end = match.span()
+        if start > current_pos:
+            spans.append(ft.TextSpan(text=text_input[current_pos:start]))
+
+        # Check which group matched
+        if match.group("link_text"):
+            link_text = match.group("link_text")
+            link_url = match.group("link_url")
+            spans.append(
+                ft.TextSpan(
+                    text=link_text,
+                    style=ft.TextStyle(
+                        color=ft.colors.BLUE, decoration=ft.TextDecoration.UNDERLINE
+                    ),
+                    url=link_url,
+                )
+            )
+        elif match.group("tag"):
+            tag = match.group("tag")  # e.g. "[willpower]"
+            # tag includes brackets. TAG_TO_LETTER keys do not.
+            tag_key = tag[1:-1]
+            if tag_key in TAG_TO_LETTER:
+                icon_char = TAG_TO_LETTER[tag_key]
+                spans.append(
+                    ft.TextSpan(
+                        text=icon_char, style=ft.TextStyle(font_family="Arkham Icons", size=20)
+                    )
+                )
+            else:
+                spans.append(ft.TextSpan(text=tag))
+        elif match.group("bold_italic"):
+            spans.append(
+                ft.TextSpan(
+                    text=match.group("bold_italic"),
+                    style=ft.TextStyle(weight=ft.FontWeight.BOLD, italic=True),
+                )
+            )
+        elif match.group("bolded"):
+            spans.append(
+                ft.TextSpan(
+                    text=match.group("bolded"), style=ft.TextStyle(weight=ft.FontWeight.BOLD)
+                )
+            )
+        elif match.group("italics"):
+            spans.append(ft.TextSpan(text=match.group("italics"), style=ft.TextStyle(italic=True)))
+
+        current_pos = end
+
+    if current_pos < len(text_input):
+        spans.append(ft.TextSpan(text=text_input[current_pos:]))
+
+    return spans
 
 
 async def on_card_click(event: ft.ControlEvent, page: ft.Page, card_id: str) -> None:
     """
     Displays a modal dialog with the card image when a card is clicked.
-    
+
     Opens an alert dialog containing the card's image, retrieved asynchronously by card ID, and provides a close button to dismiss the dialog.
     """
     logging.info(f"Card clicked with ID: {card_id}")
@@ -236,10 +303,10 @@ async def on_card_click(event: ft.ControlEvent, page: ft.Page, card_id: str) -> 
 async def retrieve_image_binary(image_url: str) -> str:
     """
     Fetch an image from the specified URL and return its content as a base64-encoded ASCII string.
-    
+
     Parameters:
         image_url (str): The URL of the image to retrieve.
-    
+
     Returns:
         str: Base64-encoded ASCII string of the image content, or an empty string if retrieval fails.
     """
@@ -262,16 +329,23 @@ async def retrieve_image_binary(image_url: str) -> str:
 async def retrieve_image_url(card_id: str) -> str | None:  # Return None if not found
     """
     Fetches the image URL for a card using its card ID via a GraphQL query.
-    
+
     Parameters:
-    	card_id (str): The unique identifier of the card.
-    
+        card_id (str): The unique identifier of the card.
+
     Returns:
-    	str | None: The image URL as a string if found, otherwise None.
+        str | None: The image URL as a string if found, otherwise None.
     """
-    gql_query = gql(f"""query getCardImageURL {{ all_card(where: {{code: {{_eq: "{card_id}"}}}}) {{ imageurl }} }}""")
+    gql_query = gql(
+        f"""query getCardImageURL {{ all_card(where: {{code: {{_eq: "{card_id}"}}}}) {{ imageurl }} }}"""
+    )
     gql_result = await gql_client.execute_async(gql_query)
-    if gql_result and "all_card" in gql_result and gql_result["all_card"] and "imageurl" in gql_result["all_card"][0]:
+    if (
+        gql_result
+        and "all_card" in gql_result
+        and gql_result["all_card"]
+        and "imageurl" in gql_result["all_card"][0]
+    ):
         image_url = gql_result["all_card"][0]["imageurl"]
         if image_url:
             return str(image_url)  # Ensure it's a string
@@ -282,14 +356,16 @@ async def retrieve_image_url(card_id: str) -> str | None:  # Return None if not 
 async def retrieve_card_text(card_id: str) -> dict | None:  # Return None if not found
     """
     Fetches detailed text information for a card by its ID using a GraphQL query.
-    
+
     Parameters:
-    	card_id (str): The unique identifier of the card.
-    
+        card_id (str): The unique identifier of the card.
+
     Returns:
-    	dict | None: A dictionary containing card text fields if found, otherwise None.
+        dict | None: A dictionary containing card text fields if found, otherwise None.
     """
-    gql_query = gql(f"""query getCardText {{ all_card_text(where: {{id: {{_eq: "{card_id}"}}}}) {{ back_flavor back_name back_text back_traits customization_change customization_text encounter_name taboo_original_back_text taboo_original_text taboo_text_change }} }}""")
+    gql_query = gql(
+        f"""query getCardText {{ all_card_text(where: {{id: {{_eq: "{card_id}"}}}}) {{ back_flavor back_name back_text back_traits customization_change customization_text encounter_name taboo_original_back_text taboo_original_text taboo_text_change }} }}"""
+    )
     gql_result = await gql_client.execute_async(gql_query)
     if gql_result and "all_card_text" in gql_result and gql_result["all_card_text"]:
         return gql_result["all_card_text"][0]
@@ -297,10 +373,12 @@ async def retrieve_card_text(card_id: str) -> dict | None:  # Return None if not
     return None
 
 
-async def copy_ruling_to_clipboard(event: ft.ControlEvent, ruling_text_content: str, button_to_style: ft.IconButton) -> None:  # Renamed params
+async def copy_ruling_to_clipboard(
+    event: ft.ControlEvent, ruling_text_content: str, button_to_style: ft.IconButton
+) -> None:  # Renamed params
     """
     Copies the specified ruling text to the clipboard and briefly highlights the associated button to indicate success.
-    
+
     Parameters:
         ruling_text_content (str): The text of the ruling to be copied to the clipboard.
         button_to_style (ft.IconButton): The button to visually highlight after copying.
@@ -309,8 +387,11 @@ async def copy_ruling_to_clipboard(event: ft.ControlEvent, ruling_text_content: 
     clipman.copy(ruling_text_content)
     if button_to_style:  # Check if button exists
         button_to_style.style.shadow = ft.BoxShadow(
-            spread_radius=-1, blur_radius=10, color=ft.colors.BLACK,
-            offset=ft.Offset(2, 2), blur_style=ft.ShadowBlurStyle.NORMAL,
+            spread_radius=-1,
+            blur_radius=10,
+            color=ft.colors.BLACK,
+            offset=ft.Offset(2, 2),
+            blur_style=ft.ShadowBlurStyle.NORMAL,
         )
         await button_to_style.update_async()
         await asyncio.sleep(0.3)
@@ -318,13 +399,17 @@ async def copy_ruling_to_clipboard(event: ft.ControlEvent, ruling_text_content: 
         await button_to_style.update_async()
 
 
-async def go_to_card_page(event: ft.ControlEvent, page: ft.Page, card_code: str, card_name: str) -> None:
+async def go_to_card_page(
+    event: ft.ControlEvent, page: ft.Page, card_code: str, card_name: str
+) -> None:
     """
     Navigates asynchronously to the detailed view of a card using its code and name.
-    
+
     The card name is base64-encoded for safe URL inclusion. After navigation, the page is updated to reflect the new route.
     """
-    await page.go_async(f"/card/{urlsafe_b64encode(card_name.encode('utf-8')).decode('ascii')}/{card_code}")  # Ensure utf-8
+    await page.go_async(
+        f"/card/{urlsafe_b64encode(card_name.encode('utf-8')).decode('ascii')}/{card_code}"
+    )  # Ensure utf-8
     await page.update_async()
 
 
@@ -332,7 +417,7 @@ class SearchController:
     def __init__(self, page: ft.Page, data: dict[str, list[dict]]) -> None:
         """
         Initialize the SearchController with the Flet page and card rulings data.
-        
+
         Parameters:
             page (ft.Page): The Flet page instance for UI updates.
             data (dict[str, list[dict]]): Dictionary mapping card names to lists of ruling entries.
@@ -342,16 +427,22 @@ class SearchController:
         self.page_content: ft.Column = page.views[0].controls[1]  # This might be fragile
         self.data = data
 
-    async def create_text_spans(self, ruling_type: EntryType, search_term: str | None, ruling_text_content: str = "", question_or_answer: QAType | None = None) -> list[ft.TextSpan]:  # Added None to search_term
+    async def create_text_spans(
+        self,
+        ruling_type: EntryType,
+        search_term: str | None,
+        ruling_text_content: str = "",
+        question_or_answer: QAType | None = None,
+    ) -> list[ft.TextSpan]:  # Added None to search_term
         """
         Generate a list of styled TextSpan objects for a ruling, optionally highlighting a search term.
-        
+
         Parameters:
             ruling_type (EntryType): The type of ruling entry.
             search_term (str | None): The term to highlight within the ruling text, if provided.
             ruling_text_content (str): The main text content of the ruling.
             question_or_answer (QAType | None): Specifies if the entry is a question or answer for QUESTION_ANSWER types.
-        
+
         Returns:
             list[ft.TextSpan]: A list of TextSpan objects representing the formatted and optionally highlighted ruling text.
         """
@@ -361,28 +452,38 @@ class SearchController:
         if ruling_type == EntryType.QUESTION_ANSWER:
             ruling_type_name = question_or_answer.title() if question_or_answer else "Entry"
 
-        text_spans = [ft.TextSpan(text=f"{ruling_type_name}: ", style=ft.TextStyle(weight=ft.FontWeight.BOLD))]
+        text_spans = [
+            ft.TextSpan(text=f"{ruling_type_name}: ", style=ft.TextStyle(weight=ft.FontWeight.BOLD))
+        ]
         ruling_text_control_spans = await replace_special_tags(self.page, ruling_text_content)
         if search_term:  # Only highlight if search_term is provided
-            ruling_text_control_spans = await highlight_spans(ruling_text_control_spans, search_term)
+            ruling_text_control_spans = await highlight_spans(
+                ruling_text_control_spans, search_term
+            )
         text_spans.extend(ruling_text_control_spans)
         return text_spans
 
     async def update_search_view(self, search_term: str) -> None:
-
         """
         Update the search results view to display card rulings matching the provided search term.
-        
+
         Filters all card rulings for matches with the search term (case-insensitive), groups results by card, and displays each matching ruling with a copy-to-clipboard button and highlighted search terms. If no results are found, displays a message indicating no matches. Updates the page asynchronously.
         """
-        def _create_copy_button_lambda(btn_ruling_text, btn_ruling_question, btn_ruling_answer, btn_instance: ft.IconButton):
+
+        def _create_copy_button_lambda(
+            btn_ruling_text, btn_ruling_question, btn_ruling_answer, btn_instance: ft.IconButton
+        ):
             # This inner function is needed because lambdas capture variables by name from the enclosing scope at definition time
             # but we need to pass the button *instance* that the lambda is attached to.
             # However, the button instance isn't fully defined when the lambda is defined.
             # A workaround is to have the button call a method that then knows about the button.
             # For now, we pass the button instance to the copy_ruling_to_clipboard.
-            rules_text_content = btn_ruling_text or rf"Q: {btn_ruling_question}\n A: {btn_ruling_answer}"
-            return lambda e: asyncio.create_task(copy_ruling_to_clipboard(e, rules_text_content, btn_instance))
+            rules_text_content = (
+                btn_ruling_text or rf"Q: {btn_ruling_question}\n A: {btn_ruling_answer}"
+            )
+            return lambda e: asyncio.create_task(
+                copy_ruling_to_clipboard(e, rules_text_content, btn_instance)
+            )
 
         self.page_content.scroll = None  # Consider ft.ScrollMode.ADAPTIVE or ft.ScrollMode.AUTO
         self.page_content.controls.clear()
@@ -395,7 +496,9 @@ class SearchController:
             # await self.page.update_async()
             # return
 
-        for card_name, card_rulings in tqdm(self.data.items(), total=len(self.data), desc="Processing cards"):
+        for card_name, card_rulings in tqdm(
+            self.data.items(), total=len(self.data), desc="Processing cards"
+        ):
             card_added = False
             card_specific_controls = []  # Controls for the current card
 
@@ -412,7 +515,9 @@ class SearchController:
                 ruling_answer = ruling_content.get("answer", "")
                 card_id = ruling.get("card_code", "")
 
-                current_ruling_text_for_search = f"{ruling_text_val} {ruling_question} {ruling_answer}"
+                current_ruling_text_for_search = (
+                    f"{ruling_text_val} {ruling_question} {ruling_answer}"
+                )
                 if search_term.lower() not in current_ruling_text_for_search.lower():
                     continue
 
@@ -422,36 +527,64 @@ class SearchController:
                         ft.Text(
                             spans=[
                                 ft.TextSpan(
-                                    card_name, style=ft.TextStyle(decoration=ft.TextDecoration.UNDERLINE),
-                                    on_click=lambda e, name=card_name, code=card_id: asyncio.create_task(go_to_card_page(e, self.page, code, name))
+                                    card_name,
+                                    style=ft.TextStyle(decoration=ft.TextDecoration.UNDERLINE),
+                                    on_click=lambda e,
+                                    name=card_name,
+                                    code=card_id: asyncio.create_task(
+                                        go_to_card_page(e, self.page, code, name)
+                                    ),
                                 )
                             ],
-                            theme_style=ft.TextThemeStyle.TITLE_MEDIUM, selectable=True
+                            theme_style=ft.TextThemeStyle.TITLE_MEDIUM,
+                            selectable=True,
                         )
                     )
 
                 text_spans_for_display = []
                 copy_button = ft.IconButton(icon=ft.icons.COPY, icon_size=20, tooltip="Copy ruling")
                 # The lambda needs to correctly capture rule_text, question, answer for *this* button
-                full_ruling_text_for_copy = ruling_text_val or rf"Q: {ruling_question}\n A: {ruling_answer}"
-                copy_button.on_click = lambda e, rt=full_ruling_text_for_copy, btn=copy_button: asyncio.create_task(copy_ruling_to_clipboard(e, rt, btn))
+                full_ruling_text_for_copy = (
+                    ruling_text_val or rf"Q: {ruling_question}\n A: {ruling_answer}"
+                )
+                copy_button.on_click = (
+                    lambda e, rt=full_ruling_text_for_copy, btn=copy_button: asyncio.create_task(
+                        copy_ruling_to_clipboard(e, rt, btn)
+                    )
+                )
 
                 text_spans_for_display.append(copy_button)
 
                 if ruling_type == EntryType.QUESTION_ANSWER:
                     if ruling_question:
-                        text_spans_for_display.extend(await self.create_text_spans(ruling_type, search_term, ruling_question, QAType.QUESTION))
+                        text_spans_for_display.extend(
+                            await self.create_text_spans(
+                                ruling_type, search_term, ruling_question, QAType.QUESTION
+                            )
+                        )
                         text_spans_for_display.append(ft.TextSpan(text="\n"))
                     if ruling_answer:
-                        text_spans_for_display.extend(await self.create_text_spans(ruling_type, search_term, ruling_answer, QAType.ANSWER))
+                        text_spans_for_display.extend(
+                            await self.create_text_spans(
+                                ruling_type, search_term, ruling_answer, QAType.ANSWER
+                            )
+                        )
                 elif ruling_text_val:
-                    text_spans_for_display.extend(await self.create_text_spans(ruling_type, search_term, ruling_text_val))
+                    text_spans_for_display.extend(
+                        await self.create_text_spans(ruling_type, search_term, ruling_text_val)
+                    )
                 else:  # Fallback for UNKNOWN or empty
-                     text_spans_for_display.append(ft.TextSpan("Ruling content appears empty or unknown."))
+                    text_spans_for_display.append(
+                        ft.TextSpan("Ruling content appears empty or unknown.")
+                    )
 
                 card_specific_controls.append(
                     ft.Container(
-                        content=ft.Row([ft.Text(spans=text_spans_for_display, selectable=True, expand=True)], scroll=None, expand=True),
+                        content=ft.Row(
+                            [ft.Text(spans=text_spans_for_display, selectable=True, expand=True)],
+                            scroll=None,
+                            expand=True,
+                        ),
                         # padding=ft.padding.symmetric(vertical=5) # Add some padding
                     )
                 )
@@ -461,7 +594,12 @@ class SearchController:
                 content_controls.controls.append(ft.Divider(height=10, thickness=2))
 
         self.page_content.controls.clear()
-        self.page_content.controls.append(ft.Text(spans=[ft.TextSpan("Search results for "), ft.TextSpan(f'"{search_term}"')], theme_style=ft.TextThemeStyle.HEADLINE_MEDIUM))
+        self.page_content.controls.append(
+            ft.Text(
+                spans=[ft.TextSpan("Search results for "), ft.TextSpan(f'"{search_term}"')],
+                theme_style=ft.TextThemeStyle.HEADLINE_MEDIUM,
+            )
+        )
 
         if not content_controls.controls:
             logging.info(f"No search results found for term: {search_term}")
@@ -471,23 +609,36 @@ class SearchController:
         await self.page.update_async()
         # await self.page_content.update_async() # page.update_async() should cover this
 
-    async def get_rulings_for_card(self, page: ft.Page, card_name: str, card_code: str, image_binary: str | None, card_text_data: dict | None) -> list[ft.Control]:  # card_text renamed to card_text_data
-
+    async def get_rulings_for_card(
+        self,
+        page: ft.Page,
+        card_name: str,
+        card_code: str,
+        image_binary: str | None,
+        card_text_data: dict | None,
+    ) -> list[ft.Control]:  # card_text renamed to card_text_data
         """
         Retrieve and format all rulings for a specific card as UI controls for display in the card detail view.
-        
+
         Parameters:
-        	card_name (str): The name of the card whose rulings are to be displayed.
-        	card_code (str): The unique code identifying the card.
-        	image_binary (str | None): Base64-encoded image data for the card, if available.
-        	card_text_data (dict | None): Additional card text details, if available.
-        
+                card_name (str): The name of the card whose rulings are to be displayed.
+                card_code (str): The unique code identifying the card.
+                image_binary (str | None): Base64-encoded image data for the card, if available.
+                card_text_data (dict | None): Additional card text details, if available.
+
         Returns:
-        	list[ft.Control]: A list of Flet UI controls representing the card's rulings, each with copy-to-clipboard functionality and styled text. If no rulings are found, returns a message indicating this.
+                list[ft.Control]: A list of Flet UI controls representing the card's rulings, each with copy-to-clipboard functionality and styled text. If no rulings are found, returns a message indicating this.
         """
-        def _create_copy_button_lambda_for_card_view(btn_ruling_text, btn_ruling_question, btn_ruling_answer, btn_instance: ft.IconButton):
-            rules_text_content = btn_ruling_text or rf"Q: {btn_ruling_question}\n A: {btn_ruling_answer}"
-            return lambda e: asyncio.create_task(copy_ruling_to_clipboard(e, rules_text_content, btn_instance))
+
+        def _create_copy_button_lambda_for_card_view(
+            btn_ruling_text, btn_ruling_question, btn_ruling_answer, btn_instance: ft.IconButton
+        ):
+            rules_text_content = (
+                btn_ruling_text or rf"Q: {btn_ruling_question}\n A: {btn_ruling_answer}"
+            )
+            return lambda e: asyncio.create_task(
+                copy_ruling_to_clipboard(e, rules_text_content, btn_instance)
+            )
 
         card_rulings_list = self.data.get(card_name, [])
         display_controls = []
@@ -506,25 +657,43 @@ class SearchController:
 
             text_spans = []
             copy_button = ft.IconButton(icon=ft.icons.COPY, icon_size=20, tooltip="Copy ruling")
-            full_ruling_text_for_copy = ruling_text_val or rf"Q: {ruling_question}\n A: {ruling_answer}"
-            copy_button.on_click = lambda e, rt=full_ruling_text_for_copy, btn=copy_button: asyncio.create_task(copy_ruling_to_clipboard(e, rt, btn))
+            full_ruling_text_for_copy = (
+                ruling_text_val or rf"Q: {ruling_question}\n A: {ruling_answer}"
+            )
+            copy_button.on_click = (
+                lambda e, rt=full_ruling_text_for_copy, btn=copy_button: asyncio.create_task(
+                    copy_ruling_to_clipboard(e, rt, btn)
+                )
+            )
             text_spans.append(copy_button)
 
             if ruling_type == EntryType.QUESTION_ANSWER:
                 if ruling_question:
-                    text_spans.extend(await self.create_text_spans(ruling_type, None, ruling_question, QAType.QUESTION))
+                    text_spans.extend(
+                        await self.create_text_spans(
+                            ruling_type, None, ruling_question, QAType.QUESTION
+                        )
+                    )
                     text_spans.append(ft.TextSpan(text="\n"))
                 if ruling_answer:
-                    text_spans.extend(await self.create_text_spans(ruling_type, None, ruling_answer, QAType.ANSWER))
+                    text_spans.extend(
+                        await self.create_text_spans(
+                            ruling_type, None, ruling_answer, QAType.ANSWER
+                        )
+                    )
             elif ruling_text_val:
-                 text_spans.extend(await self.create_text_spans(ruling_type, None, ruling_text_val))
+                text_spans.extend(await self.create_text_spans(ruling_type, None, ruling_text_val))
             else:
                 text_spans.append(ft.TextSpan(f"({ruling_type.title()}) Content missing."))
 
             display_controls.append(ft.Text(spans=text_spans, selectable=True))
             display_controls.append(ft.Divider(height=5))
 
-        return display_controls if display_controls else [ft.Text("No rulings found for this card in the local data.")]
+        return (
+            display_controls
+            if display_controls
+            else [ft.Text("No rulings found for this card in the local data.")]
+        )
 
 
 class SearchInputController:
@@ -540,7 +709,7 @@ class SearchInputController:
     async def search_input_changed(self, event: ft.ControlEvent) -> None:
         """
         Handles changes to the search input field and updates the search results view with matching rulings.
-        
+
         This method is debounced to limit update frequency during rapid input changes.
         """
         if search_term := event.control.value:
@@ -552,7 +721,7 @@ class SearchInputController:
 async def main_flet_app(page: ft.Page) -> None:  # Renamed main to main_flet_app
     """
     Initializes and runs the main Flet application, setting up the UI, search functionality, and navigation for the FAQ card rulings interface.
-    
+
     This function configures the page theme, loads and indexes card ruling data, and constructs the root view with a search input and dynamic content area. It registers asynchronous handlers for route changes and view navigation, enabling transitions between the search results and detailed card views with images and rulings. The application supports both web and desktop environments, integrating with FastAPI for web deployment.
     """
     print("Flet Main function started.")
@@ -617,7 +786,10 @@ async def main_flet_app(page: ft.Page) -> None:  # Renamed main to main_flet_app
     search_input = ft.TextField(
         hint_text="Type to search...",
         on_change=search_input_handler.search_input_changed,  # Directly pass the method
-        autofocus=True, autocorrect=False, icon=ft.icons.SEARCH, expand=True
+        autofocus=True,
+        autocorrect=False,
+        icon=ft.icons.SEARCH,
+        expand=True,
     )
 
     root_view_controls = [
@@ -635,14 +807,12 @@ async def main_flet_app(page: ft.Page) -> None:  # Renamed main to main_flet_app
     async def route_change(route_event: ft.RouteChangeEvent) -> None:
         """
         Handles route changes to display either the card detail view or the main search view.
-        
+
         When navigating to a card detail route, retrieves the card's image and text, gathers its rulings, and displays them in a new view. When returning to the home route, removes the detail view to show the search interface.
         """
         print(f"Route change: {route_event.route}")
         # page.views.clear() # This would clear the root view with search
         # page.views.append(root_view) # Keep root view
-
-        current_page_content_column = page_content_ref.current  # Get the current column to update
 
         troute = ft.TemplateRoute(route_event.route)
         if troute.match("/card/:card_name_b64/:card_code"):  # Use a different param name
@@ -657,23 +827,41 @@ async def main_flet_app(page: ft.Page) -> None:  # Renamed main to main_flet_app
             card_text_content = await retrieve_card_text(card_code)  # Renamed card_text
 
             # Use SearchController, not SearchView
-            search_controller = SearchController(page, json_data)  # json_data needs to be accessible
-            ruling_controls = await search_controller.get_rulings_for_card(page, card_name, card_code, image_binary_data, card_text_content)
+            search_controller = SearchController(
+                page, json_data
+            )  # json_data needs to be accessible
+            ruling_controls = await search_controller.get_rulings_for_card(
+                page, card_name, card_code, image_binary_data, card_text_content
+            )
 
             # Create new view for card details
             card_detail_view_content = [
-                ft.AppBar(title=ft.Text(f"{card_name} ({card_code})"), bgcolor=ft.colors.SURFACE_VARIANT),
-                ft.Row([
+                ft.AppBar(
+                    title=ft.Text(f"{card_name} ({card_code})"), bgcolor=ft.colors.SURFACE_VARIANT
+                ),
+                ft.Row(
+                    [
                         ft.Column(
-                            [ft.Image(src_base64=image_binary_data) if image_binary_data else ft.Text("No Image")],
-                            expand=2, alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                            [
+                                ft.Image(src_base64=image_binary_data)
+                                if image_binary_data
+                                else ft.Text("No Image")
+                            ],
+                            expand=2,
+                            alignment=ft.MainAxisAlignment.CENTER,
+                            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                         ),
                         ft.Column(
-                            [ft.Text("Rulings", theme_style=ft.TextThemeStyle.HEADLINE_SMALL)] + ruling_controls,
-                            expand=6, scroll=ft.ScrollMode.ADAPTIVE,
+                            [
+                                ft.Text("Rulings", theme_style=ft.TextThemeStyle.HEADLINE_SMALL),
+                                *ruling_controls,
+                            ],
+                            expand=6,
+                            scroll=ft.ScrollMode.ADAPTIVE,
                         ),
                     ],
-                    expand=True, vertical_alignment=ft.CrossAxisAlignment.START
+                    expand=True,
+                    vertical_alignment=ft.CrossAxisAlignment.START,
                 ),
             ]
 
@@ -681,9 +869,9 @@ async def main_flet_app(page: ft.Page) -> None:  # Renamed main to main_flet_app
             # Otherwise, append. This logic might need refinement for proper back navigation.
             new_view = ft.View(route_event.route, card_detail_view_content)
             if len(page.views) > 1 and page.views[-1].route != "/":
-                 page.views[-1] = new_view  # Replace current detail view
+                page.views[-1] = new_view  # Replace current detail view
             else:
-                 page.views.append(new_view)
+                page.views.append(new_view)
 
         elif route_event.route == "/":  # Navigating back to home
             if len(page.views) > 1:  # If we were in a detail view
@@ -708,13 +896,20 @@ async def main_flet_app(page: ft.Page) -> None:  # Renamed main to main_flet_app
 
 logging.info("Starting app.")
 print("Starting app")
-flet_path = os.getenv("FLET_PATH", DEFAULT_FLET_PATH)
-flet_port = int(os.getenv("FLET_PORT", DEFAULT_FLET_PORT))
+flet_path = os.getenv("FLET_PATH", constants.DEFAULT_FLET_PATH)
+flet_port = int(os.getenv("FLET_PORT", constants.DEFAULT_FLET_PORT))
 # Pass main_flet_app to flet_fastapi.app
-app = flet_fastapi.app(main_flet_app, assets_dir=str(Path(__file__).parent / "assets"), web_renderer=ft.WebRenderer.HTML)
+app = flet_fastapi.app(
+    main_flet_app,
+    assets_dir=str(Path(__file__).parent / "assets"),
+    web_renderer=ft.WebRenderer.HTML,
+)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 if __name__ == "__main__":
@@ -723,7 +918,8 @@ if __name__ == "__main__":
     # To run as desktop (if desired, and flet_fastapi is not the primary mode):
     # ft.app(target=main_flet_app, assets_dir="assets")
     print("To run with FastAPI: uvicorn main:app --reload --port", flet_port)
-    print("This __main__ block is for information or direct Flet desktop app mode (currently commented out).")
+    print(
+        "This __main__ block is for information or direct Flet desktop app mode (currently commented out)."
+    )
     # For direct Flet execution (without FastAPI):
     # ft.app(target=main_flet_app, assets_dir=str(Path(__file__).parent / "assets"), view=ft.WEB_BROWSER, port=flet_port)
-

@@ -2,20 +2,23 @@ import datetime
 import json
 import logging
 import os
-from openai import OpenAI
+
 # from typing import List, Dict, Any, Optional # Replaced by built-in types or new syntax
 import uuid
+
+from bs4 import BeautifulSoup  # For stripping HTML if needed from original_html_snippet
+from openai import OpenAI
 
 # We are working with dictionaries that conform to Ruling/Provenance models
 # but won't strictly parse them with Pydantic here to keep this script simpler.
 # The Pydantic models are defined in `process_new_format.py`.
 from abyssal_tome import constants  # Updated import path
-from bs4 import BeautifulSoup  # For stripping HTML if needed from original_html_snippet
 
 logging.basicConfig(level=logging.INFO)
 # DEFAULT_SOURCE_CARD_CODE_EXTERNAL is now in constants.py
 
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+
 
 def call_openai_api(prompt: str, model: str = "gpt-4o") -> dict | None:
     """
@@ -25,7 +28,10 @@ def call_openai_api(prompt: str, model: str = "gpt-4o") -> dict | None:
         response = client.chat.completions.create(
             model=model,
             messages=[
-                {"role": "system", "content": "You are a helpful assistant designed to output JSON."},
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant designed to output JSON.",
+                },
                 {"role": "user", "content": prompt},
             ],
             response_format="json",
@@ -37,6 +43,7 @@ def call_openai_api(prompt: str, model: str = "gpt-4o") -> dict | None:
     except Exception as e:
         logging.error(f"Error calling OpenAI API: {e}")
         return None
+
 
 # --- Placeholder AI Functions ---
 
@@ -67,8 +74,8 @@ def ai_get_related_cards(
         combined_codes = set(existing_related_codes)
         combined_codes.update(newly_identified_codes)
         combined_codes.discard(source_card_code)
-        return sorted(list(combined_codes))
-    return sorted(list(set(existing_related_codes)))
+        return sorted(combined_codes)
+    return sorted(set(existing_related_codes))
 
 
 def ai_extract_provenance_details(
@@ -147,7 +154,7 @@ def ai_generate_tags(ruling_text: str, existing_tags: list[str]) -> list[str]:
 
     combined_tags = set(existing_tags)
     combined_tags.update(newly_generated_tags)
-    return sorted(list(combined_tags))
+    return sorted(combined_tags)
 
 
 # --- Conversion for External Rulings ---

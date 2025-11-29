@@ -1,7 +1,7 @@
 import flet as ft
 import pytest
 import regex as re
-from main import replace_special_tags
+from abyssal_tome.app import replace_special_tags
 
 # Constants used in the tests
 LINK_PATTERN = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
@@ -74,9 +74,9 @@ def test_replace_special_tags(
     spans = replace_special_tags(page, ruling_text)
 
     # Assert
-    assert (
-        len(spans) == expected_spans_length
-    ), f"Test ID {test_id}: Unexpected number of spans created."
+    assert len(spans) == expected_spans_length, (
+        f"Test ID {test_id}: Unexpected number of spans created."
+    )
     assert (
         len([record for record in caplog.records if record.levelname == "WARNING"])
         == expected_warnings

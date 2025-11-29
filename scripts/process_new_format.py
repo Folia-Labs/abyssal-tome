@@ -14,7 +14,7 @@ from bs4 import BeautifulSoup
 # from typing import List, Optional # Replaced by built-in types or new syntax
 from pydantic import BaseModel, Field
 
-from symbol import postProcess, tokenize
+from abyssal_tome.symbol import postProcess, tokenize
 
 logging.basicConfig(level=logging.INFO)
 
@@ -27,26 +27,26 @@ from abyssal_tome import constants  # Updated import path
 #     "willpower": "p",
 #     "agility": "a",
 #     "combat": "c",
-    "intellect": "b",
-    "skull": "k",
-    "cultist": "l",
-    "tablet": "q",
-    "elderthing": "n",
-    "autofail": "m",
-    "eldersign": "o",
-    "bless": "v",
-    "curse": "w",
-    "frost": "x",
-    "reaction": "!",
-    "unique": "s",
-    "mystic": "g",
-    "guardian": "f",
-    "seeker": "h",
-    "rogue": "d",
-    "survivor": "e",
-    "free": "j",
-    "action": "i",
-}
+#     "intellect": "b",
+#     "skull": "k",
+#     "cultist": "l",
+#     "tablet": "q",
+#     "elderthing": "n",
+#     "autofail": "m",
+#     "eldersign": "o",
+#     "bless": "v",
+#     "curse": "w",
+#     "frost": "x",
+#     "reaction": "!",
+#     "unique": "s",
+#     "mystic": "g",
+#     "guardian": "f",
+#     "seeker": "h",
+#     "rogue": "d",
+#     "survivor": "e",
+#     "free": "j",
+#     "action": "i",
+# }
 
 
 class RulingType(Enum):
@@ -148,7 +148,7 @@ def convert_json_to_html(faq_data: dict[str, dict[str, str]]) -> dict[str, Beaut
     }
 
 
-def print_token_stream(tokens: List[md_it.token.Token], nest_level: int = 0) -> None:
+def print_token_stream(tokens: list[md_it.token.Token], nest_level: int = 0) -> None:
     for token in tokens:
         for i in range(nest_level):
             print(f"{' ' * 2 * i}Ã¢ÂÂ¾Ã¢ÂÂ¾Ã¢ÂÂ¾|")
@@ -180,7 +180,7 @@ def print_token_stream(tokens: List[md_it.token.Token], nest_level: int = 0) -> 
 def process_markdown_faq_data(markdown_faq_data: dict[str, str]) -> None:
     """
     Parses and prints the Markdown token streams for each card's FAQ data.
-    
+
     For each card, this function uses a MarkdownIt parser with custom inline rules to tokenize the FAQ markdown text and outputs a formatted representation of the token stream.
     """
     md = md_it.MarkdownIt("gfm-like", {"typographer": True})
@@ -201,7 +201,7 @@ def process_markdown_faq_data(markdown_faq_data: dict[str, str]) -> None:
 def extract_faq_source_name(text_content: str) -> str | None:
     """
     Extracts the FAQ source name and version from the given text content using a predefined regex pattern.
-    
+
     Returns:
         The formatted FAQ source name and version string if found, otherwise None.
     """
@@ -214,11 +214,11 @@ def extract_faq_source_name(text_content: str) -> str | None:
 def extract_related_card_codes(html_content: str, current_card_code: str) -> list[str]:
     """
     Extracts all unique card codes linked within the given HTML content, excluding the current card's code.
-    
+
     Parameters:
         html_content (str): The HTML content to search for card code links.
         current_card_code (str): The card code to exclude from the results.
-    
+
     Returns:
         list[str]: A sorted list of related card codes found in the HTML content.
     """
@@ -232,14 +232,14 @@ def process_ruling_html(
 ) -> list[Ruling]:
     """
     Extracts structured `Ruling` objects from a BeautifulSoup element representing a single FAQ ruling item.
-    
+
     Parses the HTML content of a ruling (typically an `<li>` element), identifying ruling types (such as question, answer, errata, or clarification) based on `<strong>` tags and their associated content. Handles question-answer pairs, clarification blocks, and provenance extraction, and associates related card codes found in the HTML. Returns a list of `Ruling` objects representing the structured rulings extracted from the input HTML.
-     
+
     Parameters:
         source_card_code (str): The card code to which the ruling belongs.
         ruling_soup (BeautifulSoup): The parsed HTML element containing the ruling.
         card_updated_at (str | None): The last update timestamp for the card's FAQ entry.
-    
+
     Returns:
         list[Ruling]: A list of structured `Ruling` objects extracted from the HTML.
     """
@@ -402,9 +402,9 @@ def process_ruling_html(
 def process_html_faq_data(raw_faq_json: dict[str, dict]) -> list[Ruling]:
     """
     Extracts and structures all rulings from raw FAQ JSON data for multiple cards.
-    
+
     For each card, parses the HTML FAQ content, identifies individual ruling items (typically list elements), and processes them into structured `Ruling` objects with provenance and related metadata. Handles both list-based and block-level FAQ formats.
-    
+
     Returns:
         list[Ruling]: A list of all extracted and structured rulings across all cards.
     """
@@ -434,7 +434,7 @@ def process_html_faq_data(raw_faq_json: dict[str, dict]) -> list[Ruling]:
 def main() -> None:
     """
     Loads FAQ data, processes it into structured ruling objects, and writes the results to a JSON file.
-    
+
     Attempts to load the FAQ JSON from a configured path, extract and structure all rulings, and serialize them to a specified output file. Logs errors if loading or writing fails.
     """
     output_path = constants.PROCESSED_RULINGS_V2_PATH

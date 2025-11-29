@@ -121,7 +121,9 @@ def load_card_data(file_path_str: str = "../assets/player_cards.json") -> None: 
     # Actual implementation needed based on project's card data files
 
 
-def load_rulings_data(file_path_str: str = "../assets/processed_rulings_v3_ai_enriched.json") -> None:
+def load_rulings_data(
+    file_path_str: str = "../assets/processed_rulings_v3_ai_enriched.json",
+) -> None:
     """
     Load and validate rulings data from a JSON file into the global ALL_RULINGS_DATA dictionary.
 
@@ -154,7 +156,9 @@ def load_rulings_data(file_path_str: str = "../assets/processed_rulings_v3_ai_en
         )  # Added exc_info
 
 
-def load_opinionated_rulings_data(file_path_str: str = "../assets/opinionated_rulings.json") -> None:
+def load_opinionated_rulings_data(
+    file_path_str: str = "../assets/opinionated_rulings.json",
+) -> None:
     """
     Load opinionated rulings from a JSON file, validate them, and associate them with their corresponding official rulings.
 
