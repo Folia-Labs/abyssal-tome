@@ -6,13 +6,12 @@ import os
 # from typing import List, Dict, Any, Optional # Replaced by built-in types or new syntax
 import uuid
 
-from bs4 import BeautifulSoup  # For stripping HTML if needed from original_html_snippet
-from openai import OpenAI
-
 # We are working with dictionaries that conform to Ruling/Provenance models
 # but won't strictly parse them with Pydantic here to keep this script simpler.
 # The Pydantic models are defined in `process_new_format.py`.
 from abyssal_tome import constants  # Updated import path
+from bs4 import BeautifulSoup  # For stripping HTML if needed from original_html_snippet
+from openai import OpenAI
 
 logging.basicConfig(level=logging.INFO)
 # DEFAULT_SOURCE_CARD_CODE_EXTERNAL is now in constants.py

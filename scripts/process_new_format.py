@@ -9,12 +9,11 @@ from pprint import pp
 import bs4
 import markdown_it as md_it
 import markdownify
+from abyssal_tome.symbol import postProcess, tokenize
 from bs4 import BeautifulSoup
 
 # from typing import List, Optional # Replaced by built-in types or new syntax
 from pydantic import BaseModel, Field
-
-from abyssal_tome.symbol import postProcess, tokenize
 
 logging.basicConfig(level=logging.INFO)
 

@@ -5,9 +5,8 @@ import re
 import aiohttp
 import requests
 import tqdm
-from tqdm.asyncio import tqdm_asyncio
-
 from abyssal_tome import constants  # Updated import path
+from tqdm.asyncio import tqdm_asyncio
 
 # Regex patterns and cycles map moved to constants.py
 

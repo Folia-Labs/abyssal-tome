@@ -3,7 +3,7 @@ import contextlib
 import pytest
 from bs4 import BeautifulSoup
 from hypothesis import given
-from hypothesis.strategies import lists, sampled_from, text
+from hypothesis.strategies import text
 from pydantic import ValidationError
 
 from scripts.process_new_format import Ruling, RulingType, process_ruling_html

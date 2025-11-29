@@ -59,26 +59,7 @@ class QAType(StrEnum):
     ANSWER = "answer"
 
 
-# Use TAG_TO_LETTER from constants to ensure consistency
-
-
-TAG_TO_LETTER = constants.TAG_TO_LETTER
-
-LINK_PATTERN = reg.compile(r"\[(?P<link_text>[^\[\]]+)\](?=\([^\)]+\))\((?P<link_url>[^\(\)]+)\)")
-TAG_PATTERN = reg.compile(
-    r"(?P<tag>"
-    + r"|".join(reg.escape(f"[{tag}]", special_only=True) for tag in constants.TAG_TO_LETTER)
-    + ")"
-)
-BOLD_ITALIC_PATTERN = reg.compile(r"\*\*\*(?P<bold_italic>.*?)\*\*\*")
-BOLD_PATTERN = reg.compile(r"\*\*(?P<bolded>.*?)\*\*")
-ITALIC_PATTERN = reg.compile(r"\*(?P<italics>.*?)\*")
-ALL_PATTERN = reg.compile(
-    "|".join(
-        pat.pattern
-        for pat in (LINK_PATTERN, TAG_PATTERN, BOLD_ITALIC_PATTERN, BOLD_PATTERN, ITALIC_PATTERN)
-    )
-)
+# Use constants from constants.py to ensure consistency
 
 transport = GQL_Transport(url="https://gapi.arkhamcards.com/v1/graphql")
 gql_client = Client(transport=transport, fetch_schema_from_transport=True)
@@ -116,7 +97,7 @@ def highlight_text(span: ft.TextSpan, search_term: str) -> list[ft.TextSpan]:
         list[ft.TextSpan]: A list of text spans with highlighted matches.
     """
     term_pattern = reg.escape(search_term, special_only=True, literal_spaces=True)
-    for tag_name_in_dict, icon_char in TAG_TO_LETTER.items():  # Corrected variable name
+    for tag_name_in_dict, icon_char in constants.TAG_TO_LETTER.items():  # Corrected variable name
         if (
             search_term.lower() in tag_name_in_dict  # Check against keys like "willpower"
             and span.style
@@ -207,7 +188,7 @@ async def replace_special_tags(page: ft.Page, text_input: str) -> list[ft.TextSp
     current_pos = 0
 
     # We need to iterate over matches. regex.finditer works.
-    for match in ALL_PATTERN.finditer(text_input):
+    for match in constants.ALL_PATTERN.finditer(text_input):
         start, end = match.span()
         if start > current_pos:
             spans.append(ft.TextSpan(text=text_input[current_pos:start]))
@@ -229,8 +210,8 @@ async def replace_special_tags(page: ft.Page, text_input: str) -> list[ft.TextSp
             tag = match.group("tag")  # e.g. "[willpower]"
             # tag includes brackets. TAG_TO_LETTER keys do not.
             tag_key = tag[1:-1]
-            if tag_key in TAG_TO_LETTER:
-                icon_char = TAG_TO_LETTER[tag_key]
+            if tag_key in constants.TAG_TO_LETTER:
+                icon_char = constants.TAG_TO_LETTER[tag_key]
                 spans.append(
                     ft.TextSpan(
                         text=icon_char, style=ft.TextStyle(font_family="Arkham Icons", size=20)

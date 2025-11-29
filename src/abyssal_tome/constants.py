@@ -8,6 +8,8 @@ icon mappings, and configuration values used across multiple scripts and modules
 import re
 from pathlib import Path
 
+import regex as reg
+
 # --- Project Root ---
 # Assuming constants.py is in src/abyssal_tome/
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
@@ -146,3 +148,20 @@ CYCLES_MAP: dict[str, str] = {
 # --- Flet App specific constants (from main.py/app.py) ---
 DEFAULT_FLET_PATH = ""
 DEFAULT_FLET_PORT = 8502
+
+# Regex patterns for App
+LINK_PATTERN = reg.compile(r"\[(?P<link_text>[^\[\]]+)\](?=\([^\)]+\))\((?P<link_url>[^\(\)]+)\)")
+TAG_PATTERN = reg.compile(
+    r"(?P<tag>"
+    + r"|".join(reg.escape(f"[{tag}]", special_only=True) for tag in TAG_TO_LETTER)
+    + ")"
+)
+BOLD_ITALIC_PATTERN = reg.compile(r"\*\*\*(?P<bold_italic>.*?)\*\*\*")
+BOLD_PATTERN = reg.compile(r"\*\*(?P<bolded>.*?)\*\*")
+ITALIC_PATTERN = reg.compile(r"\*(?P<italics>.*?)\*")
+ALL_PATTERN = reg.compile(
+    "|".join(
+        pat.pattern
+        for pat in (LINK_PATTERN, TAG_PATTERN, BOLD_ITALIC_PATTERN, BOLD_PATTERN, ITALIC_PATTERN)
+    )
+)
