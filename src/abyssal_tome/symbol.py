@@ -3,32 +3,7 @@
 from markdown_it.rules_inline import StateInline
 from markdown_it.rules_inline.state_inline import Delimiter
 
-TAG_TO_LETTER = {
-    "wild": "z",
-    "willpower": "p",
-    "agility": "a",
-    "combat": "c",
-    "intellect": "b",
-    "skull": "k",
-    "cultist": "l",
-    "tablet": "q",
-    "elderthing": "n",
-    "autofail": "m",
-    "eldersign": "o",
-    "bless": "v",
-    "curse": "w",
-    "frost": "x",
-    "reaction": "!",
-    "unique": "s",
-    "mystic": "g",
-    "guardian": "f",
-    "seeker": "h",
-    "rogue": "d",
-    "survivor": "e",
-    "free": "j",
-    "fast": "j",
-    "action": "i",
-}
+from .constants import TAG_TO_LETTER
 
 
 def tokenize(state: StateInline, silent: bool) -> bool:

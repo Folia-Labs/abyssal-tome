@@ -1,6 +1,7 @@
 import datetime
 import json
 import logging
+import pathlib
 
 from peewee import CharField, DateTimeField, Model, SqliteDatabase, TextField
 from playhouse.shortcuts import model_to_dict
@@ -27,7 +28,7 @@ db.connect()
 db.create_tables([Ruling])
 
 # Load the schema and use it to validate data
-with open("assets/rulings_schema.json") as schema_file:
+with pathlib.Path("assets/rulings_schema.json").open() as schema_file:
     schema = json.load(schema_file)
 
 
@@ -62,7 +63,6 @@ def process_and_insert_data(data: list) -> None:
             source_updated=datetime.datetime.strptime(
                 item["source"]["updated"], "%d %B %Y"
             ).replace(tzinfo=datetime.UTC)
-
             if item["source"]["updated"]
             else None,
             source_type=item["source"]["type"],
@@ -72,7 +72,7 @@ def process_and_insert_data(data: list) -> None:
 
 
 # Load the processed data
-with open("assets/processed_data.json") as data_file:
+with pathlib.Path("assets/processed_data.json").open() as data_file:
     processed_data = json.load(data_file)
 
 # Process and insert the data into the database
